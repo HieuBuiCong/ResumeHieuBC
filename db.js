@@ -1,66 +1,26 @@
-import {
-  getCIDTaskById,
-  updateCIDTaskStatus
-} from "../models/cid_task.model.js";
-import {
-  getQuestionsByCategoryId
-} from "../models/task_category_question.model.js";
-import {
-  createTaskCategoryQuestionAnswer
-} from "../models/task_category_question_answer.model.js";
+import { createCIDTask } from "../models/cid_task.model.js";
 import { sendEmail } from "../utils/emailService.js";
 
-// ✅ User or Admin submits answers → Auto updates status to "submitted"
-export const submitCIDTask = async (req, res) => {
+// ✅ Admin creates CID task and notifies the assigned user
+export const addCIDTask = async (req, res) => {
   try {
-    const userId = req.user.id;
-    const userRole = req.user.role; // "admin" or "user"
-    const { cid_task_id, answers, submit_as_user_id } = req.body;
+    const { task_category_id, cid_id, status_id, user_id, deadline, task_approver_id } = req.body;
 
-    let submitterId = userId; // Default: The logged-in user
-    if (userRole === "admin" && submit_as_user_id) {
-      submitterId = submit_as_user_id; // Admin submits on behalf of a user
+    if (!task_category_id || !cid_id || !status_id || !user_id || !deadline) {
+      return res.status(400).json({ message: "All fields are required" });
     }
 
-    // Fetch CID Task
-    const cidTask = await getCIDTaskById(cid_task_id);
-    if (!cidTask) return res.status(404).json({ message: "CID Task not found" });
+    const task = await createCIDTask(req.body);
 
-    // Ensure the user is allowed to submit this task
-    if (userRole !== "admin" && cidTask.user_id !== userId) {
-      return res.status(403).json({ message: "You can only submit your assigned tasks" });
-    }
-
-    // Fetch related questions
-    const questions = await getQuestionsByCategoryId(cidTask.task_category_id);
-    if (questions.length !== answers.length) {
-      return res.status(400).json({ message: "All questions must be answered before submission" });
-    }
-
-    // Save each answer
-    for (const ans of answers) {
-      await createTaskCategoryQuestionAnswer({
-        task_category_question_id: ans.question_id,
-        cid_task_id,
-        user_id: submitterId,
-        answer: ans.answer
-      });
-    }
-
-    // ✅ Change status to "submitted"
-    await updateCIDTaskStatus(cid_task_id, 2, submitterId); // 2 = Submitted
-
-    // ✅ Send email notification to task approver
-    const approverEmail = "admin@example.com"; // Fetch dynamically later
+    // ✅ Notify the assigned user
+    const userEmail = "assigned_user@example.com"; // Fetch dynamically from DB
     await sendEmail(
-      approverEmail,
-      "Task Submitted for Approval",
-      `A task (ID: ${cid_task_id}) has been submitted. Please review and approve/reject.`
+      userEmail,
+      "New Task Assigned",
+      `A new task has been assigned to you. Please log in and complete your responses.\nTask ID: ${task.cid_task_id}`
     );
 
-    res.status(200).json({
-      message: `Task submitted successfully by ${userRole === "admin" ? "admin on behalf of user" : "user"}`,
-    });
+    res.status(201).json({ message: "CID task created successfully and user notified", task });
 
   } catch (error) {
     res.status(500).json({ error: error.message });
