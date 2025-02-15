@@ -1,10 +1,22 @@
 import express from "express";
-import { login, register, logout } from "../controllers/auth.controller.js";
+import cookieParser from "cookie-parser";  // ✅ Import cookie-parser
+import dotenv from "dotenv";
+import cors from "cors";
+import helmet from "helmet";
+import authRoutes from "./routes/auth.routes.js";
+import userRoutes from "./routes/user.routes.js";
 
-const router = express.Router();
+dotenv.config();
+const app = express();
 
-router.post("/register", register);
-router.post("/login", login);
-router.post("/logout", logout);  // ✅ Logout route
+app.use(express.json());
+app.use(cookieParser());  // ✅ Enable cookie parsing
+app.use(cors({ origin: "http://yourfrontend.com", credentials: true })); // ✅ Allow frontend cookies
+app.use(helmet());
 
-export default router;
+app.use("/api/auth", authRoutes);
+app.use("/api/users", userRoutes);
+
+const PORT = process.env.PORT || 5000;
+app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
+
