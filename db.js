@@ -1,73 +1,85 @@
-import pool from "../config/database.js";
-
-// ✅ Create a new CID task (Admin Only)
-export const createCIDTask = async (taskData) => {
-  const query = `
-    INSERT INTO cid_task (task_category_id, cid_id, status_id, user_id, deadline) 
-    VALUES ($1, $2, $3, $4, $5) RETURNING *`;
-
-  const values = [
-    taskData.task_category_id,
-    taskData.cid_id,
-    taskData.status_id,
-    taskData.user_id,
-    taskData.deadline
-  ];
-
-  const { rows } = await pool.query(query, values);
-  return rows[0];
-};
+import {
+  createCIDTask,
+  getAllCIDTasks,
+  getCIDTaskById,
+  updateCIDTask,
+  updateCIDTaskStatus,
+  deleteCIDTask
+} from "../models/cid_task.model.js";
 
 // ✅ Get all CID tasks (Admin Only)
-export const getAllCIDTasks = async () => {
-  const query = `
-    SELECT ct.*, s.status_name, u.username, tc.task_name, c.cid_id 
-    FROM cid_task ct
-    JOIN status s ON ct.status_id = s.status_id
-    JOIN users u ON ct.user_id = u.user_id
-    JOIN task_category tc ON ct.task_category_id = tc.task_category_id
-    JOIN cid c ON ct.cid_id = c.cid_id
-    ORDER BY ct.cid_task_id ASC`;
-
-  const { rows } = await pool.query(query);
-  return rows;
+export const getCIDTasks = async (req, res) => {
+  try {
+    const tasks = await getAllCIDTasks();
+    res.status(200).json(tasks);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
 };
 
 // ✅ Get a CID task by ID
-export const getCIDTaskById = async (cidTaskId) => {
-  const query = "SELECT * FROM cid_task WHERE cid_task_id = $1";
-  const { rows } = await pool.query(query, [cidTaskId]);
-  return rows[0];
+export const getCIDTask = async (req, res) => {
+  try {
+    const task = await getCIDTaskById(req.params.id);
+    if (!task) return res.status(404).json({ message: "CID task not found" });
+
+    res.status(200).json(task);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+};
+
+// ✅ Create a new CID task (Admin Only)
+export const addCIDTask = async (req, res) => {
+  try {
+    const { task_category_id, cid_id, status_id, user_id, deadline } = req.body;
+
+    if (!task_category_id || !cid_id || !status_id || !user_id || !deadline) {
+      return res.status(400).json({ message: "All fields are required" });
+    }
+
+    const task = await createCIDTask(req.body);
+    res.status(201).json({ message: "CID task created successfully", task });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
 };
 
 // ✅ Update a CID task (Admin Only)
-export const updateCIDTask = async (cidTaskId, updatedFields) => {
-  const fields = Object.keys(updatedFields)
-    .map((key, index) => `${key} = $${index + 1}`)
-    .join(", ");
-  const values = Object.values(updatedFields);
+export const editCIDTask = async (req, res) => {
+  try {
+    const updatedTask = await updateCIDTask(req.params.id, req.body);
+    if (!updatedTask) return res.status(404).json({ message: "CID task not found" });
 
-  const query = `UPDATE cid_task SET ${fields} WHERE cid_task_id = $${values.length + 1} RETURNING *`;
-
-  const { rows } = await pool.query(query, [...values, cidTaskId]);
-  return rows[0];
+    res.status(200).json({ message: "CID task updated successfully", updatedTask });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
 };
 
 // ✅ Update only the status (User Permission)
-export const updateCIDTaskStatus = async (cidTaskId, statusId, userId) => {
-  const query = `
-    UPDATE cid_task 
-    SET status_id = $1 
-    WHERE cid_task_id = $2 AND user_id = $3
-    RETURNING *`;
+export const editCIDTaskStatus = async (req, res) => {
+  try {
+    const userId = req.user.id;
+    const { status_id } = req.body;
 
-  const { rows } = await pool.query(query, [statusId, cidTaskId, userId]);
-  return rows[0];
+    const updatedTask = await updateCIDTaskStatus(req.params.id, status_id, userId);
+    if (!updatedTask) return res.status(403).json({ message: "Not authorized to update this task" });
+
+    res.status(200).json({ message: "Task status updated successfully", updatedTask });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
 };
 
 // ✅ Delete a CID task (Admin Only)
-export const deleteCIDTask = async (cidTaskId) => {
-  const query = "DELETE FROM cid_task WHERE cid_task_id = $1 RETURNING *";
-  const { rows } = await pool.query(query, [cidTaskId]);
-  return rows[0];
+export const removeCIDTask = async (req, res) => {
+  try {
+    const deletedTask = await deleteCIDTask(req.params.id);
+    if (!deletedTask) return res.status(404).json({ message: "CID task not found" });
+
+    res.status(200).json({ message: "CID task deleted successfully", deletedTask });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
 };
