@@ -1,46 +1,70 @@
-import pool from "../config/database.js";
-
-// ✅ Create a new product
-export const createProduct = async (model, partNumber, partName, owner) => {
-  const query = `
-    INSERT INTO product (model, part_number, part_name, owner)
-    VALUES ($1, $2, $3, $4) RETURNING *`;
-  const values = [model, partNumber, partName, owner];
-
-  const { rows } = await pool.query(query, values);
-  return rows[0];
-};
+import {
+  createProduct,
+  getAllProducts,
+  getProductById,
+  updateProduct,
+  deleteProduct
+} from "../models/product.model.js";
 
 // ✅ Get all products
-export const getAllProducts = async () => {
-  const query = "SELECT * FROM product ORDER BY product_id ASC";
-  const { rows } = await pool.query(query);
-  return rows;
+export const getProducts = async (req, res) => {
+  try {
+    const products = await getAllProducts();
+    res.status(200).json(products);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
 };
 
 // ✅ Get a product by ID
-export const getProductById = async (productId) => {
-  const query = "SELECT * FROM product WHERE product_id = $1";
-  const { rows } = await pool.query(query, [productId]);
-  return rows[0];
+export const getProduct = async (req, res) => {
+  try {
+    const product = await getProductById(req.params.id);
+    if (!product) return res.status(404).json({ message: "Product not found" });
+
+    res.status(200).json(product);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+};
+
+// ✅ Create a new product
+export const addProduct = async (req, res) => {
+  try {
+    const { model, part_number, part_name, owner } = req.body;
+
+    // Validate required fields
+    if (!model || !part_number || !part_name) {
+      return res.status(400).json({ message: "Model, part number, and part name are required" });
+    }
+
+    const product = await createProduct(model, part_number, part_name, owner);
+    res.status(201).json({ message: "Product created successfully", product });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
 };
 
 // ✅ Update a product
-export const updateProduct = async (productId, updatedFields) => {
-  const fields = Object.keys(updatedFields)
-    .map((key, index) => `${key} = $${index + 1}`)
-    .join(", ");
-  const values = Object.values(updatedFields);
+export const editProduct = async (req, res) => {
+  try {
+    const updatedProduct = await updateProduct(req.params.id, req.body);
+    if (!updatedProduct) return res.status(404).json({ message: "Product not found" });
 
-  const query = `UPDATE product SET ${fields} WHERE product_id = $${values.length + 1} RETURNING *`;
-
-  const { rows } = await pool.query(query, [...values, productId]);
-  return rows[0];
+    res.status(200).json({ message: "Product updated successfully", updatedProduct });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
 };
 
 // ✅ Delete a product
-export const deleteProduct = async (productId) => {
-  const query = "DELETE FROM product WHERE product_id = $1 RETURNING *";
-  const { rows } = await pool.query(query, [productId]);
-  return rows[0];
+export const removeProduct = async (req, res) => {
+  try {
+    const deletedProduct = await deleteProduct(req.params.id);
+    if (!deletedProduct) return res.status(404).json({ message: "Product not found" });
+
+    res.status(200).json({ message: "Product deleted successfully", deletedProduct });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
 };
