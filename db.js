@@ -1,15 +1,13 @@
-CREATE TABLE cid (
-    cid_id SERIAL PRIMARY KEY,
-    product_id INT NOT NULL,
-    prev_rev VARCHAR(50),
-    next_rev VARCHAR(50) NOT NULL,
-    change_notice VARCHAR(255),
-    supplier_id INT,
-    rework_or_not BOOLEAN,
-    OTS_or_not BOOLEAN,
-    sending_date DATE NOT NULL,
-    closing_date DATE,
-    note TEXT,
-    created_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY (product_id) REFERENCES product(product_id) ON DELETE CASCADE
+-- 🚀 Create task_category table
+CREATE TABLE task_category (
+    task_category_id SERIAL PRIMARY KEY,
+    task_name VARCHAR(255) NOT NULL UNIQUE
+);
+
+-- 🚀 Create task_category_question table
+CREATE TABLE task_category_question (
+    task_category_question_id SERIAL PRIMARY KEY,
+    question_name TEXT NOT NULL UNIQUE,
+    task_category_id INT NOT NULL,
+    FOREIGN KEY (task_category_id) REFERENCES task_category(task_category_id) ON DELETE CASCADE
 );
