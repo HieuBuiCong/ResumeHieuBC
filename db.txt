@@ -1,0 +1,52 @@
+📌 Step 1: Save the Schema as schema.sql
+Inside your database/ folder, create a new file:
+
+🔹 File: database/schema.sql
+
+📌 Step 2: Create seed.sql for Default Data
+Inside the same database/ folder, create a file:
+
+🔹 File: database/seed.sql
+💡 Note: Replace '$2a$10$EXAMPLEHASHEDPASSWORD' with a hashed password for security.
+
+📌 Step 3: Automate Database Setup in package.json
+Modify package.json to include scripts for setting up the database:
+
+"scripts": {
+  "db:setup": "psql -U your_db_user -d your_database_name -f database/schema.sql",
+  "db:seed": "psql -U your_db_user -d your_database_name -f database/seed.sql"
+}
+
+Now, you can run:
+
+npm run db:setup   # Creates all tables
+npm run db:seed    # Populates initial data
+
+
+📌 Step 4: Keep Track of Schema Changes with Migrations
+If your database evolves over time, use migrations instead of modifying schema.sql directly.
+
+Create migration folder:
+
+backend/
+├── database/
+│   ├── migrations/
+│   │   ├── 001_create_users.sql
+│   │   ├── 002_create_products.sql
+│   │   ├── 003_add_new_column.sql
+
+Each new change (e.g., adding a column) gets a new file:
+
+-- 🚀 Add a new column to the "users" table
+ALTER TABLE users ADD COLUMN phone_number VARCHAR(20) NULL;
+
+psql -U your_db_user -d your_database_name -f database/migrations/003_add_new_column.sql
+
+Run: psql -U your_db_user -d your_database_name -f database/migrations/003_add_new_column.sql 
+
+📌 Summary
+Folder/File	Purpose
+database/schema.sql	Defines all tables, constraints, and relationships.
+database/seed.sql	Inserts initial data (roles, departments, admin user).
+database/migrations/	Stores incremental changes to the database schema.
+package.json	Automates database setup and seeding.
