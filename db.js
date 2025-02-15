@@ -1,54 +1,52 @@
-import pool from "../config/database.js"; // PostgreSQL connection
-
-// ✅ Create a new user
-export const createUser = async (user) => {
-  const { username, password, role_id, department_id, email, leader_email } = user;
-  
-  const query = `
-    INSERT INTO users (username, password, role_id, department_id, email, leader_email)
-    VALUES ($1, $2, $3, $4, $5, $6) RETURNING *`;
-
-  const values = [username, password, role_id, department_id, email, leader_email];
-
-  const { rows } = await pool.query(query, values);
-  return rows[0];
-};
-
-// ✅ Get user by ID
-export const getUserById = async (user_id) => {
-  const query = "SELECT * FROM users WHERE user_id = $1";
-  const { rows } = await pool.query(query, [user_id]);
-  return rows[0];
-};
-
-// ✅ Get user by username (for authentication)
-export const getUserByUsername = async (username) => {
-  const query = "SELECT * FROM users WHERE username = $1";
-  const { rows } = await pool.query(query, [username]);
-  return rows[0];
-};
+import {
+  getAllUsers,
+  getUserById,
+  updateUser,
+  deleteUser,
+} from "../models/user.model.js";
 
 // ✅ Get all users
-export const getAllUsers = async () => {
-  const query = "SELECT * FROM users ORDER BY user_id ASC";
-  const { rows } = await pool.query(query);
-  return rows;
+export const getUsers = async (req, res) => {
+  try {
+    const users = await getAllUsers();
+    res.status(200).json(users);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+};
+
+// ✅ Get a single user
+export const getUser = async (req, res) => {
+  try {
+    const user = await getUserById(req.params.id);
+    if (!user) return res.status(404).json({ message: "User not found" });
+
+    res.status(200).json(user);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
 };
 
 // ✅ Update user details
-export const updateUser = async (user_id, updateFields) => {
-  const fields = Object.keys(updateFields).map((key, index) => `${key} = $${index + 1}`).join(", ");
-  const values = Object.values(updateFields);
+export const editUser = async (req, res) => {
+  try {
+    const updatedUser = await updateUser(req.params.id, req.body);
+    if (!updatedUser) return res.status(404).json({ message: "User not found" });
 
-  const query = `UPDATE users SET ${fields} WHERE user_id = $${values.length + 1} RETURNING *`;
-
-  const { rows } = await pool.query(query, [...values, user_id]);
-  return rows[0];
+    res.status(200).json({ message: "User updated successfully", updatedUser });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
 };
 
 // ✅ Delete user
-export const deleteUser = async (user_id) => {
-  const query = "DELETE FROM users WHERE user_id = $1 RETURNING *";
-  const { rows } = await pool.query(query, [user_id]);
-  return rows[0];
+export const removeUser = async (req, res) => {
+  try {
+    const deletedUser = await deleteUser(req.params.id);
+    if (!deletedUser) return res.status(404).json({ message: "User not found" });
+
+    res.status(200).json({ message: "User deleted successfully", deletedUser });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
 };
