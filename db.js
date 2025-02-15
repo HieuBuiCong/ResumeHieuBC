@@ -1,29 +1,53 @@
-import express from "express";
-import {
-  getTaskCategories,
-  getTaskCategory,
-  addTaskCategory,
-  editTaskCategory,
-  removeTaskCategory
-} from "../controllers/task_category.controller.js";
-import authMiddleware from "../middleware/auth.middleware.js";
-import roleMiddleware from "../middleware/role.middleware.js";
+import pool from "../config/database.js";
 
-const router = express.Router();
+// ✅ Create a new task category question
+export const createTaskCategoryQuestion = async (questionName, taskCategoryId) => {
+  const query = `
+    INSERT INTO task_category_question (question_name, task_category_id) 
+    VALUES ($1, $2) RETURNING *`;
+  const values = [questionName, taskCategoryId];
 
-// ✅ Get all task categories (Admin Only)
-router.get("/", authMiddleware, roleMiddleware("view_task_categories"), getTaskCategories);
+  const { rows } = await pool.query(query, values);
+  return rows[0];
+};
 
-// ✅ Get a specific task category by ID (Admin Only)
-router.get("/:id", authMiddleware, roleMiddleware("view_task_categories"), getTaskCategory);
+// ✅ Get all task category questions
+export const getAllTaskCategoryQuestions = async () => {
+  const query = "SELECT * FROM task_category_question ORDER BY task_category_question_id ASC";
+  const { rows } = await pool.query(query);
+  return rows;
+};
 
-// ✅ Create a new task category (Admin Only)
-router.post("/", authMiddleware, roleMiddleware("create_task_category"), addTaskCategory);
+// ✅ Get a task category question by ID
+export const getTaskCategoryQuestionById = async (taskCategoryQuestionId) => {
+  const query = "SELECT * FROM task_category_question WHERE task_category_question_id = $1";
+  const { rows } = await pool.query(query, [taskCategoryQuestionId]);
+  return rows[0];
+};
 
-// ✅ Update a task category (Admin Only)
-router.put("/:id", authMiddleware, roleMiddleware("update_task_category"), editTaskCategory);
+// ✅ Get questions by task category ID
+export const getQuestionsByCategoryId = async (taskCategoryId) => {
+  const query = "SELECT * FROM task_category_question WHERE task_category_id = $1";
+  const { rows } = await pool.query(query, [taskCategoryId]);
+  return rows;
+};
 
-// ✅ Delete a task category (Admin Only)
-router.delete("/:id", authMiddleware, roleMiddleware("delete_task_category"), removeTaskCategory);
+// ✅ Update a task category question
+export const updateTaskCategoryQuestion = async (taskCategoryQuestionId, updatedFields) => {
+  const fields = Object.keys(updatedFields)
+    .map((key, index) => `${key} = $${index + 1}`)
+    .join(", ");
+  const values = Object.values(updatedFields);
 
-export default router;
+  const query = `UPDATE task_category_question SET ${fields} WHERE task_category_question_id = $${values.length + 1} RETURNING *`;
+
+  const { rows } = await pool.query(query, [...values, taskCategoryQuestionId]);
+  return rows[0];
+};
+
+// ✅ Delete a task category question
+export const deleteTaskCategoryQuestion = async (taskCategoryQuestionId) => {
+  const query = "DELETE FROM task_category_question WHERE task_category_question_id = $1 RETURNING *";
+  const { rows } = await pool.query(query, [taskCategoryQuestionId]);
+  return rows[0];
+};
