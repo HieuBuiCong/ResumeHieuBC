@@ -1,52 +1,27 @@
-import {
-  getAllUsers,
-  getUserById,
-  updateUser,
-  deleteUser,
-} from "../models/user.model.js";
+mport jwt from "jsonwebtoken";
+import config from "../config/dotenv.config.js"; // Load environment variables
 
-// ✅ Get all users
-export const getUsers = async (req, res) => {
+const authMiddleware = (req, res, next) => {
+  // 1️⃣ Get the Authorization header
+  const token = req.header("Authorization");
+
+  // 2️⃣ Check if token exists
+  if (!token) {
+    return res.status(401).json({ message: "Access Denied: No Token Provided" });
+  }
+
   try {
-    const users = await getAllUsers();
-    res.status(200).json(users);
+    // 3️⃣ Verify the token
+    const decoded = jwt.verify(token.split(" ")[1], config.jwtSecret);
+
+    // 4️⃣ Attach user data to the request
+    req.user = decoded;
+
+    // 5️⃣ Move to the next middleware or route
+    next();
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    res.status(401).json({ message: "Invalid Token" });
   }
 };
 
-// ✅ Get a single user
-export const getUser = async (req, res) => {
-  try {
-    const user = await getUserById(req.params.id);
-    if (!user) return res.status(404).json({ message: "User not found" });
-
-    res.status(200).json(user);
-  } catch (error) {
-    res.status(500).json({ error: error.message });
-  }
-};
-
-// ✅ Update user details
-export const editUser = async (req, res) => {
-  try {
-    const updatedUser = await updateUser(req.params.id, req.body);
-    if (!updatedUser) return res.status(404).json({ message: "User not found" });
-
-    res.status(200).json({ message: "User updated successfully", updatedUser });
-  } catch (error) {
-    res.status(500).json({ error: error.message });
-  }
-};
-
-// ✅ Delete user
-export const removeUser = async (req, res) => {
-  try {
-    const deletedUser = await deleteUser(req.params.id);
-    if (!deletedUser) return res.status(404).json({ message: "User not found" });
-
-    res.status(200).json({ message: "User deleted successfully", deletedUser });
-  } catch (error) {
-    res.status(500).json({ error: error.message });
-  }
-};
+export default authMiddleware;
