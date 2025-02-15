@@ -1,19 +1,32 @@
-import { updateCIDTaskApproval } from "../models/cid_task.model.js";
+import pool from "../config/database.js";
 
-// ✅ Admin approves/rejects a submitted task
-export const reviewCIDTask = async (req, res) => {
-  try {
-    const approverId = req.user.id; // Approver's user ID
-    const { cid_task_id, decision } = req.body; // decision = "approved" or "rejected"
-    const newStatus = decision === "approved" ? 3 : 4; // 3 = Completed, 4 = Rejected
+// ✅ Get all CID tasks (Users can see all)
+export const getAllCIDTasks = async () => {
+  const query = `
+    SELECT ct.*, s.status_name, u.username, tc.task_name, c.cid_id 
+    FROM cid_task ct
+    JOIN status s ON ct.status_id = s.status_id
+    JOIN users u ON ct.user_id = u.user_id
+    JOIN task_category tc ON ct.task_category_id = tc.task_category_id
+    JOIN cid c ON ct.cid_id = c.cid_id
+    ORDER BY ct.cid_task_id ASC`;
 
-    // ✅ Update task with approval date & approver ID
-    const updatedTask = await updateCIDTaskApproval(cid_task_id, newStatus, approverId);
-    if (!updatedTask) return res.status(404).json({ message: "CID Task not found" });
+  const { rows } = await pool.query(query);
+  return rows;
+};
 
-    res.status(200).json({ message: `Task status updated to ${decision}`, updatedTask });
+// ✅ Get CID tasks assigned to a specific user
+export const getCIDTasksByUser = async (userId) => {
+  const query = `
+    SELECT ct.*, s.status_name, u.username, tc.task_name, c.cid_id 
+    FROM cid_task ct
+    JOIN status s ON ct.status_id = s.status_id
+    JOIN users u ON ct.user_id = u.user_id
+    JOIN task_category tc ON ct.task_category_id = tc.task_category_id
+    JOIN cid c ON ct.cid_id = c.cid_id
+    WHERE ct.user_id = $1
+    ORDER BY ct.cid_task_id ASC`;
 
-  } catch (error) {
-    res.status(500).json({ error: error.message });
-  }
+  const { rows } = await pool.query(query, [userId]);
+  return rows;
 };
