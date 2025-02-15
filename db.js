@@ -1,15 +1,10 @@
 import express from "express";
-import { getUsers, editUser, removeUser } from "../controllers/user.controller.js";
-import authMiddleware from "../middleware/auth.middleware.js";
-import roleMiddleware from "../middleware/role.middleware.js";
+import { login, register, logout } from "../controllers/auth.controller.js";
 
 const router = express.Router();
 
-// ✅ Users can only see their own profile, Admins can see all users
-router.get("/", authMiddleware, getUsers);
-
-// ✅ Only Admins can update or delete users
-router.put("/:id", authMiddleware, roleMiddleware("update_user"), editUser);
-router.delete("/:id", authMiddleware, roleMiddleware("delete_user"), removeUser);
+router.post("/register", register);
+router.post("/login", login);
+router.post("/logout", logout);  // ✅ Logout route
 
 export default router;
