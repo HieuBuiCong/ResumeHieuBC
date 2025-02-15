@@ -1,69 +1,63 @@
-import { getAllCIDs } from "../models/cid.model.js";
-import { getAllCIDTasks } from "../models/cid_task.model.js";
+import { getCIDById } from "../models/cid.model.js";
+import { getCIDTasksByCID } from "../models/cid_task.model.js";
 import { sendEmail } from "../utils/emailService.js";
 
-// ✅ Send a summary email of all CID & CID_Tasks (Formatted in a table)
-export const sendCIDSummaryEmail = async (req, res) => {
+// ✅ Send a summary email for a specific CID
+export const sendSpecificCIDSummaryEmail = async (req, res) => {
   try {
-    const { optionalEmails } = req.body; // Optional recipients from frontend
+    const { cid_id, optionalEmails } = req.body; // Get CID ID and optional email recipients
 
-    // Fetch all CIDs and CID_Tasks
-    const cids = await getAllCIDs();
-    const cidTasks = await getAllCIDTasks();
-
-    if (!cids.length) {
-      return res.status(400).json({ message: "No CIDs available to send." });
+    // Fetch CID details
+    const cid = await getCIDById(cid_id);
+    if (!cid) {
+      return res.status(404).json({ message: `CID with ID ${cid_id} not found.` });
     }
+
+    // Fetch tasks related to this CID
+    const cidTasks = await getCIDTasksByCID(cid_id);
 
     // ✅ Construct email content with HTML table
     let emailBody = `
-      <h2>🚀 CID Summary Report</h2>
-      <p><strong>Total CIDs:</strong> ${cids.length}</p>
+      <h2>🚀 CID Summary Report - CID #${cid.cid_id}</h2>
+      <p>
+        <strong>Model:</strong> ${cid.model} <br>
+        <strong>Part Number:</strong> ${cid.part_number} <br>
+        <strong>Owner:</strong> ${cid.owner || "N/A"} <br>
+        <strong>Sending Date:</strong> ${cid.sending_date} <br>
+        <strong>Status:</strong> ${cid.status}
+      </p>
     `;
 
-    cids.forEach((cid) => {
+    if (cidTasks.length) {
       emailBody += `
-        <h3>🔹 CID #${cid.cid_id}</h3>
-        <p>
-          <strong>Model:</strong> ${cid.model} <br>
-          <strong>Part Number:</strong> ${cid.part_number} <br>
-          <strong>Owner:</strong> ${cid.owner || "N/A"} <br>
-          <strong>Sending Date:</strong> ${cid.sending_date} <br>
-          <strong>Status:</strong> ${cid.status}
-        </p>
+        <h3>📌 Tasks for CID #${cid.cid_id}</h3>
+        <table border="1" cellspacing="0" cellpadding="5">
+          <thead>
+            <tr>
+              <th>Task Name</th>
+              <th>Assigned To</th>
+              <th>Status</th>
+              <th>Deadline</th>
+            </tr>
+          </thead>
+          <tbody>
       `;
 
-      const tasksForCID = cidTasks.filter(task => task.cid_id === cid.cid_id);
-      if (tasksForCID.length) {
+      cidTasks.forEach(task => {
         emailBody += `
-          <table border="1" cellspacing="0" cellpadding="5">
-            <thead>
-              <tr>
-                <th>Task Name</th>
-                <th>Assigned To</th>
-                <th>Status</th>
-                <th>Deadline</th>
-              </tr>
-            </thead>
-            <tbody>
+          <tr>
+            <td>${task.task_name}</td>
+            <td>${task.username}</td>
+            <td>${task.status_name}</td>
+            <td>${task.deadline}</td>
+          </tr>
         `;
+      });
 
-        tasksForCID.forEach(task => {
-          emailBody += `
-            <tr>
-              <td>${task.task_name}</td>
-              <td>${task.username}</td>
-              <td>${task.status_name}</td>
-              <td>${task.deadline}</td>
-            </tr>
-          `;
-        });
-
-        emailBody += `</tbody></table><br>`;
-      } else {
-        emailBody += `<p>No tasks assigned yet.</p>`;
-      }
-    });
+      emailBody += `</tbody></table><br>`;
+    } else {
+      emailBody += `<p>No tasks assigned yet.</p>`;
+    }
 
     // ✅ Get assigned user emails dynamically (Replace with DB query)
     const assignedUserEmails = ["user1@example.com", "user2@example.com"]; // Mocked for now
@@ -74,12 +68,12 @@ export const sendCIDSummaryEmail = async (req, res) => {
     // ✅ Send email with HTML formatting
     await sendEmail(
       recipientEmails.join(", "), // Send to all recipients
-      "📌 CID Summary Report",
+      `📌 CID Summary Report - CID #${cid.cid_id}`,
       emailBody,
       true // Send as HTML
     );
 
-    res.status(200).json({ message: "📧 CID Summary Email Sent Successfully!" });
+    res.status(200).json({ message: `📧 CID Summary Email Sent for CID #${cid.cid_id} Successfully!` });
 
   } catch (error) {
     res.status(500).json({ error: error.message });
