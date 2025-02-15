@@ -1,53 +1,80 @@
-import pool from "../config/database.js";
-
-// ✅ Create a new task category question
-export const createTaskCategoryQuestion = async (questionName, taskCategoryId) => {
-  const query = `
-    INSERT INTO task_category_question (question_name, task_category_id) 
-    VALUES ($1, $2) RETURNING *`;
-  const values = [questionName, taskCategoryId];
-
-  const { rows } = await pool.query(query, values);
-  return rows[0];
-};
+import {
+  createTaskCategoryQuestion,
+  getAllTaskCategoryQuestions,
+  getTaskCategoryQuestionById,
+  getQuestionsByCategoryId,
+  updateTaskCategoryQuestion,
+  deleteTaskCategoryQuestion
+} from "../models/task_category_question.model.js";
 
 // ✅ Get all task category questions
-export const getAllTaskCategoryQuestions = async () => {
-  const query = "SELECT * FROM task_category_question ORDER BY task_category_question_id ASC";
-  const { rows } = await pool.query(query);
-  return rows;
+export const getTaskCategoryQuestions = async (req, res) => {
+  try {
+    const questions = await getAllTaskCategoryQuestions();
+    res.status(200).json(questions);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
 };
 
 // ✅ Get a task category question by ID
-export const getTaskCategoryQuestionById = async (taskCategoryQuestionId) => {
-  const query = "SELECT * FROM task_category_question WHERE task_category_question_id = $1";
-  const { rows } = await pool.query(query, [taskCategoryQuestionId]);
-  return rows[0];
+export const getTaskCategoryQuestion = async (req, res) => {
+  try {
+    const question = await getTaskCategoryQuestionById(req.params.id);
+    if (!question) return res.status(404).json({ message: "Question not found" });
+
+    res.status(200).json(question);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
 };
 
-// ✅ Get questions by task category ID
-export const getQuestionsByCategoryId = async (taskCategoryId) => {
-  const query = "SELECT * FROM task_category_question WHERE task_category_id = $1";
-  const { rows } = await pool.query(query, [taskCategoryId]);
-  return rows;
+// ✅ Get all questions by task category ID
+export const getQuestionsByCategory = async (req, res) => {
+  try {
+    const questions = await getQuestionsByCategoryId(req.params.categoryId);
+    res.status(200).json(questions);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+};
+
+// ✅ Create a new task category question
+export const addTaskCategoryQuestion = async (req, res) => {
+  try {
+    const { question_name, task_category_id } = req.body;
+    
+    if (!question_name || !task_category_id) {
+      return res.status(400).json({ message: "Question name and task category ID are required" });
+    }
+
+    const question = await createTaskCategoryQuestion(question_name, task_category_id);
+    res.status(201).json({ message: "Question created successfully", question });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
 };
 
 // ✅ Update a task category question
-export const updateTaskCategoryQuestion = async (taskCategoryQuestionId, updatedFields) => {
-  const fields = Object.keys(updatedFields)
-    .map((key, index) => `${key} = $${index + 1}`)
-    .join(", ");
-  const values = Object.values(updatedFields);
+export const editTaskCategoryQuestion = async (req, res) => {
+  try {
+    const updatedQuestion = await updateTaskCategoryQuestion(req.params.id, req.body);
+    if (!updatedQuestion) return res.status(404).json({ message: "Question not found" });
 
-  const query = `UPDATE task_category_question SET ${fields} WHERE task_category_question_id = $${values.length + 1} RETURNING *`;
-
-  const { rows } = await pool.query(query, [...values, taskCategoryQuestionId]);
-  return rows[0];
+    res.status(200).json({ message: "Question updated successfully", updatedQuestion });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
 };
 
 // ✅ Delete a task category question
-export const deleteTaskCategoryQuestion = async (taskCategoryQuestionId) => {
-  const query = "DELETE FROM task_category_question WHERE task_category_question_id = $1 RETURNING *";
-  const { rows } = await pool.query(query, [taskCategoryQuestionId]);
-  return rows[0];
+export const removeTaskCategoryQuestion = async (req, res) => {
+  try {
+    const deletedQuestion = await deleteTaskCategoryQuestion(req.params.id);
+    if (!deletedQuestion) return res.status(404).json({ message: "Question not found" });
+
+    res.status(200).json({ message: "Question deleted successfully", deletedQuestion });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
 };
