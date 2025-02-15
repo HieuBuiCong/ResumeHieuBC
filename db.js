@@ -1,24 +1,10 @@
-import express from "express";
-import {
-  getCIDTasks,
-  getCIDTask,
-  addCIDTask,
-  editCIDTask,
-  editCIDTaskStatus,
-  removeCIDTask
-} from "../controllers/cid_task.controller.js";
-import authMiddleware from "../middleware/auth.middleware.js";
-import roleMiddleware from "../middleware/role.middleware.js";
-
-const router = express.Router();
-
-// ✅ Admin Controls
-router.get("/", authMiddleware, roleMiddleware("view_tasks"), getCIDTasks);
-router.post("/", authMiddleware, roleMiddleware("create_task"), addCIDTask);
-router.put("/:id", authMiddleware, roleMiddleware("update_task"), editCIDTask);
-router.delete("/:id", authMiddleware, roleMiddleware("delete_task"), removeCIDTask);
-
-// ✅ User can update only status
-router.put("/:id/status", authMiddleware, roleMiddleware("update_status"), editCIDTaskStatus);
-
-export default router;
+CREATE TABLE task_category_question_answer (
+    task_category_question_answer_id SERIAL PRIMARY KEY,
+    task_category_question_id INT NOT NULL,
+    cid_task_id INT NOT NULL,
+    user_id INT NOT NULL,
+    answer TEXT NOT NULL,
+    FOREIGN KEY (task_category_question_id) REFERENCES task_category_question(task_category_question_id) ON DELETE CASCADE,
+    FOREIGN KEY (cid_task_id) REFERENCES cid_task(cid_task_id) ON DELETE CASCADE,
+    FOREIGN KEY (user_id) REFERENCES users(user_id) ON DELETE CASCADE
+);
