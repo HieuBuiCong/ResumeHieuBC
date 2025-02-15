@@ -1,17 +1,15 @@
-const roleMiddleware = (requiredRoles) => {
-  return (req, res, next) => {
-    if (!req.user) {
-      return res.status(401).json({ message: "Unauthorized: No user data found" });
-    }
+import express from "express";
+import { getUsers, editUser, removeUser } from "../controllers/user.controller.js";
+import authMiddleware from "../middleware/auth.middleware.js";
+import roleMiddleware from "../middleware/role.middleware.js";
 
-    const userRole = req.user.role; // Extract role from JWT token
+const router = express.Router();
 
-    if (!requiredRoles.includes(userRole)) {
-      return res.status(403).json({ message: "Forbidden: You do not have permission" });
-    }
+// ✅ Users can only see their own profile, Admins can see all users
+router.get("/", authMiddleware, getUsers);
 
-    next(); // ✅ User is authorized, proceed to the route
-  };
-};
+// ✅ Only Admins can update or delete users
+router.put("/:id", authMiddleware, roleMiddleware("update_user"), editUser);
+router.delete("/:id", authMiddleware, roleMiddleware("delete_user"), removeUser);
 
-export default roleMiddleware;
+export default router;
