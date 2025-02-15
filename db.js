@@ -1,29 +1,14 @@
-import express from "express";
-import {
-  getProducts,
-  getProduct,
-  addProduct,
-  editProduct,
-  removeProduct
-} from "../controllers/product.controller.js";
-import authMiddleware from "../middleware/auth.middleware.js";
-import roleMiddleware from "../middleware/role.middleware.js";
-
-const router = express.Router();
-
-// ✅ Get all products (Admin Only)
-router.get("/", authMiddleware, roleMiddleware("view_products"), getProducts);
-
-// ✅ Get a specific product by ID (Admin Only)
-router.get("/:id", authMiddleware, roleMiddleware("view_products"), getProduct);
-
-// ✅ Create a new product (Admin Only)
-router.post("/", authMiddleware, roleMiddleware("create_product"), addProduct);
-
-// ✅ Update a product (Admin Only)
-router.put("/:id", authMiddleware, roleMiddleware("update_product"), editProduct);
-
-// ✅ Delete a product (Admin Only)
-router.delete("/:id", authMiddleware, roleMiddleware("delete_product"), removeProduct);
-
-export default router;
+CREATE TABLE cid (
+    cid_id SERIAL PRIMARY KEY,
+    product_id INT NOT NULL,
+    prev_rev VARCHAR(50),
+    next_rev VARCHAR(50) NOT NULL,
+    change_notice VARCHAR(255),
+    supplier_id INT,
+    rework_or_not BOOLEAN,
+    OTS_or_not BOOLEAN,
+    sending_date DATE NOT NULL,
+    closing_date DATE,
+    note TEXT,
+    FOREIGN KEY (product_id) REFERENCES product(product_id) ON DELETE CASCADE
+);
