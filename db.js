@@ -1,23 +1,17 @@
-// ✅ Admin approves/rejects a submitted task
-export const reviewCIDTask = async (req, res) => {
-  try {
-    const { cid_task_id, decision } = req.body; // decision = "approved" or "rejected"
-    const newStatus = decision === "approved" ? 3 : 4; // 3 = Completed, 4 = Rejected
+import express from "express";
+import {
+  submitCIDTask,
+  reviewCIDTask
+} from "../controllers/cid_task.controller.js";
+import authMiddleware from "../middleware/auth.middleware.js";
+import roleMiddleware from "../middleware/role.middleware.js";
 
-    // Fetch CID Task
-    const cidTask = await getCIDTaskById(cid_task_id);
-    if (!cidTask) return res.status(404).json({ message: "CID Task not found" });
+const router = express.Router();
 
-    if (cidTask.status_id !== 2) {
-      return res.status(400).json({ message: "Task must be submitted before approval/rejection" });
-    }
+// ✅ User submits answers (Auto-status update)
+router.post("/submit", authMiddleware, roleMiddleware("update_status"), submitCIDTask);
 
-    // ✅ Update status to "completed" or "rejected"
-    await updateCIDTaskStatus(cid_task_id, newStatus, req.user.id);
+// ✅ Admin approves/rejects task
+router.post("/review", authMiddleware, roleMiddleware("approve_task"), reviewCIDTask);
 
-    res.status(200).json({ message: `Task status updated to ${decision}` });
-
-  } catch (error) {
-    res.status(500).json({ error: error.message });
-  }
-};
+export default router;
