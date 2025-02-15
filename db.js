@@ -1,66 +1,29 @@
+import express from "express";
 import {
-  createTaskCategory,
-  getAllTaskCategories,
-  getTaskCategoryById,
-  updateTaskCategory,
-  deleteTaskCategory
-} from "../models/task_category.model.js";
+  getTaskCategories,
+  getTaskCategory,
+  addTaskCategory,
+  editTaskCategory,
+  removeTaskCategory
+} from "../controllers/task_category.controller.js";
+import authMiddleware from "../middleware/auth.middleware.js";
+import roleMiddleware from "../middleware/role.middleware.js";
 
-// ✅ Get all task categories
-export const getTaskCategories = async (req, res) => {
-  try {
-    const categories = await getAllTaskCategories();
-    res.status(200).json(categories);
-  } catch (error) {
-    res.status(500).json({ error: error.message });
-  }
-};
+const router = express.Router();
 
-// ✅ Get a task category by ID
-export const getTaskCategory = async (req, res) => {
-  try {
-    const category = await getTaskCategoryById(req.params.id);
-    if (!category) return res.status(404).json({ message: "Task category not found" });
+// ✅ Get all task categories (Admin Only)
+router.get("/", authMiddleware, roleMiddleware("view_task_categories"), getTaskCategories);
 
-    res.status(200).json(category);
-  } catch (error) {
-    res.status(500).json({ error: error.message });
-  }
-};
+// ✅ Get a specific task category by ID (Admin Only)
+router.get("/:id", authMiddleware, roleMiddleware("view_task_categories"), getTaskCategory);
 
-// ✅ Create a new task category
-export const addTaskCategory = async (req, res) => {
-  try {
-    const { task_name } = req.body;
-    if (!task_name) return res.status(400).json({ message: "Task name is required" });
+// ✅ Create a new task category (Admin Only)
+router.post("/", authMiddleware, roleMiddleware("create_task_category"), addTaskCategory);
 
-    const category = await createTaskCategory(task_name);
-    res.status(201).json({ message: "Task category created successfully", category });
-  } catch (error) {
-    res.status(500).json({ error: error.message });
-  }
-};
+// ✅ Update a task category (Admin Only)
+router.put("/:id", authMiddleware, roleMiddleware("update_task_category"), editTaskCategory);
 
-// ✅ Update a task category
-export const editTaskCategory = async (req, res) => {
-  try {
-    const updatedCategory = await updateTaskCategory(req.params.id, req.body.task_name);
-    if (!updatedCategory) return res.status(404).json({ message: "Task category not found" });
+// ✅ Delete a task category (Admin Only)
+router.delete("/:id", authMiddleware, roleMiddleware("delete_task_category"), removeTaskCategory);
 
-    res.status(200).json({ message: "Task category updated successfully", updatedCategory });
-  } catch (error) {
-    res.status(500).json({ error: error.message });
-  }
-};
-
-// ✅ Delete a task category
-export const removeTaskCategory = async (req, res) => {
-  try {
-    const deletedCategory = await deleteTaskCategory(req.params.id);
-    if (!deletedCategory) return res.status(404).json({ message: "Task category not found" });
-
-    res.status(200).json({ message: "Task category deleted successfully", deletedCategory });
-  } catch (error) {
-    res.status(500).json({ error: error.message });
-  }
-};
+export default router;
