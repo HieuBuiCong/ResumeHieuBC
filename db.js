@@ -1,17 +1,24 @@
-import express from "express";
-import {
-  submitCIDTask,
-  reviewCIDTask
-} from "../controllers/cid_task.controller.js";
-import authMiddleware from "../middleware/auth.middleware.js";
-import roleMiddleware from "../middleware/role.middleware.js";
+import pool from "../config/database.js";
 
-const router = express.Router();
+// ✅ Create a task category question answer
+export const createTaskCategoryQuestionAnswer = async (answerData) => {
+  const query = `
+    INSERT INTO task_category_question_answer (task_category_question_id, cid_task_id, user_id, answer)
+    VALUES ($1, $2, $3, $4) RETURNING *`;
+  const values = [
+    answerData.task_category_question_id,
+    answerData.cid_task_id,
+    answerData.user_id,
+    answerData.answer
+  ];
 
-// ✅ User submits answers (Auto-status update)
-router.post("/submit", authMiddleware, roleMiddleware("update_status"), submitCIDTask);
+  const { rows } = await pool.query(query, values);
+  return rows[0];
+};
 
-// ✅ Admin approves/rejects task
-router.post("/review", authMiddleware, roleMiddleware("approve_task"), reviewCIDTask);
-
-export default router;
+// ✅ Get all answers by CID Task ID
+export const getAnswersByCIDTask = async (cidTaskId) => {
+  const query = "SELECT * FROM task_category_question_answer WHERE cid_task_id = $1";
+  const { rows } = await pool.query(query, [cidTaskId]);
+  return rows;
+};
