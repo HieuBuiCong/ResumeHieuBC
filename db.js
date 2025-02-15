@@ -1,35 +1,11 @@
-# Node.js dependencies
-node_modules/
-package-lock.json
+import express from "express";
+import { sendCIDSummaryEmail } from "../controllers/cid.controller.js";
+import authMiddleware from "../middleware/auth.middleware.js";
+import roleMiddleware from "../middleware/role.middleware.js";
 
-# Environment variables (Sensitive data)
-.env
+const router = express.Router();
 
-# Logs
-logs/
-*.log
-npm-debug.log*
-yarn-debug.log*
-yarn-error.log*
+// ✅ Admin triggers the email summary for all CIDs
+router.post("/send-summary", authMiddleware, roleMiddleware("send_summary"), sendCIDSummaryEmail);
 
-# Database & Cache
-database/*.sqlite
-database/*.sqlite-journal
-*.sql
-
-# Static files (if applicable)
-public/uploads/
-public/tmp/
-
-# Build files
-dist/
-build/
-
-# OS-specific files
-.DS_Store
-Thumbs.db
-
-# Editor & IDE settings
-.vscode/
-.idea/
-*.swp
+export default router;
