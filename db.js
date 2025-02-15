@@ -1,70 +1,29 @@
+import express from "express";
 import {
-  createProduct,
-  getAllProducts,
-  getProductById,
-  updateProduct,
-  deleteProduct
-} from "../models/product.model.js";
+  getProducts,
+  getProduct,
+  addProduct,
+  editProduct,
+  removeProduct
+} from "../controllers/product.controller.js";
+import authMiddleware from "../middleware/auth.middleware.js";
+import roleMiddleware from "../middleware/role.middleware.js";
 
-// ✅ Get all products
-export const getProducts = async (req, res) => {
-  try {
-    const products = await getAllProducts();
-    res.status(200).json(products);
-  } catch (error) {
-    res.status(500).json({ error: error.message });
-  }
-};
+const router = express.Router();
 
-// ✅ Get a product by ID
-export const getProduct = async (req, res) => {
-  try {
-    const product = await getProductById(req.params.id);
-    if (!product) return res.status(404).json({ message: "Product not found" });
+// ✅ Get all products (Admin Only)
+router.get("/", authMiddleware, roleMiddleware("view_products"), getProducts);
 
-    res.status(200).json(product);
-  } catch (error) {
-    res.status(500).json({ error: error.message });
-  }
-};
+// ✅ Get a specific product by ID (Admin Only)
+router.get("/:id", authMiddleware, roleMiddleware("view_products"), getProduct);
 
-// ✅ Create a new product
-export const addProduct = async (req, res) => {
-  try {
-    const { model, part_number, part_name, owner } = req.body;
+// ✅ Create a new product (Admin Only)
+router.post("/", authMiddleware, roleMiddleware("create_product"), addProduct);
 
-    // Validate required fields
-    if (!model || !part_number || !part_name) {
-      return res.status(400).json({ message: "Model, part number, and part name are required" });
-    }
+// ✅ Update a product (Admin Only)
+router.put("/:id", authMiddleware, roleMiddleware("update_product"), editProduct);
 
-    const product = await createProduct(model, part_number, part_name, owner);
-    res.status(201).json({ message: "Product created successfully", product });
-  } catch (error) {
-    res.status(500).json({ error: error.message });
-  }
-};
+// ✅ Delete a product (Admin Only)
+router.delete("/:id", authMiddleware, roleMiddleware("delete_product"), removeProduct);
 
-// ✅ Update a product
-export const editProduct = async (req, res) => {
-  try {
-    const updatedProduct = await updateProduct(req.params.id, req.body);
-    if (!updatedProduct) return res.status(404).json({ message: "Product not found" });
-
-    res.status(200).json({ message: "Product updated successfully", updatedProduct });
-  } catch (error) {
-    res.status(500).json({ error: error.message });
-  }
-};
-
-// ✅ Delete a product
-export const removeProduct = async (req, res) => {
-  try {
-    const deletedProduct = await deleteProduct(req.params.id);
-    if (!deletedProduct) return res.status(404).json({ message: "Product not found" });
-
-    res.status(200).json({ message: "Product deleted successfully", deletedProduct });
-  } catch (error) {
-    res.status(500).json({ error: error.message });
-  }
-};
+export default router;
