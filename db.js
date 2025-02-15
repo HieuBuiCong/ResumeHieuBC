@@ -1,89 +1,33 @@
--- 🚀 Create the "role" table
-CREATE TABLE role (
-    role_id SERIAL PRIMARY KEY,
-    role_name VARCHAR(50) NOT NULL UNIQUE
-);
+📌 Explanation of Relationships
+Users & Roles (users.role_id → role.role_id)
 
--- 🚀 Create the "department" table
-CREATE TABLE department (
-    department_id SERIAL PRIMARY KEY,
-    department_name VARCHAR(100) NOT NULL UNIQUE
-);
+Each user has one role (admin or user).
+When a role is deleted, its users are also deleted (CASCADE).
+Users & Departments (users.department_id → department.department_id)
 
--- 🚀 Create the "users" table
-CREATE TABLE users (
-    user_id SERIAL PRIMARY KEY,
-    username VARCHAR(50) NOT NULL UNIQUE,
-    password TEXT NOT NULL,
-    role_id INT NOT NULL,
-    department_id INT NOT NULL,
-    profile_picture VARCHAR(255),
-    email VARCHAR(100) NOT NULL UNIQUE,
-    leader_email VARCHAR(100) NOT NULL,
-    FOREIGN KEY (role_id) REFERENCES role(role_id) ON DELETE CASCADE,
-    FOREIGN KEY (department_id) REFERENCES department(department_id) ON DELETE SET NULL
-);
+Users belong to a department.
+If a department is deleted, its users are set to NULL (SET NULL).
+Products & CID (cid.product_id → product.product_id)
 
--- 🚀 Create the "product" table
-CREATE TABLE product (
-    product_id SERIAL PRIMARY KEY,
-    product_name VARCHAR(255) NOT NULL UNIQUE
-);
+Each cid is associated with a product.
+If a product is deleted, its cid entries are also deleted (CASCADE).
+CID & Tasks (cid_task.cid_id → cid.cid_id)
 
--- 🚀 Create the "cid" table
-CREATE TABLE cid (
-    cid_id SERIAL PRIMARY KEY,
-    cid_name VARCHAR(255) NOT NULL UNIQUE,
-    product_id INT NOT NULL,
-    FOREIGN KEY (product_id) REFERENCES product(product_id) ON DELETE CASCADE
-);
+Each task belongs to a CID.
+If a cid is deleted, related tasks are also deleted (CASCADE).
+Task Categories & Tasks (cid_task.task_category_id → task_category.task_category_id)
 
--- 🚀 Create the "task_category" table
-CREATE TABLE task_category (
-    task_category_id SERIAL PRIMARY KEY,
-    task_category_name VARCHAR(255) NOT NULL UNIQUE
-);
+Tasks are categorized.
+If a task category is deleted, related tasks are also deleted (CASCADE).
+Users & Task Approvers (task_approver.user_id → users.user_id)
 
--- 🚀 Create the "cid_task" table
-CREATE TABLE cid_task (
-    cid_task_id SERIAL PRIMARY KEY,
-    cid_id INT NOT NULL,
-    task_category_id INT NOT NULL,
-    FOREIGN KEY (cid_id) REFERENCES cid(cid_id) ON DELETE CASCADE,
-    FOREIGN KEY (task_category_id) REFERENCES task_category(task_category_id) ON DELETE CASCADE
-);
+Users can be task approvers.
+If a user is deleted, their approvals are deleted (CASCADE).
+Task Approvers & Status (task_approver.status_id → status.status_id)
 
--- 🚀 Create the "status" table
-CREATE TABLE status (
-    status_id SERIAL PRIMARY KEY,
-    status_name VARCHAR(255) NOT NULL UNIQUE
-);
+Each approval has a status.
+If a status is deleted, its tasks are set to NULL (SET NULL).
+Task Questions & Answers (task_category_question_answer.question_id → task_category_question.question_id)
 
--- 🚀 Create the "task_approver" table
-CREATE TABLE task_approver (
-    task_approver_id SERIAL PRIMARY KEY,
-    user_id INT NOT NULL,
-    cid_task_id INT NOT NULL,
-    status_id INT NOT NULL,
-    FOREIGN KEY (user_id) REFERENCES users(user_id) ON DELETE CASCADE,
-    FOREIGN KEY (cid_task_id) REFERENCES cid_task(cid_task_id) ON DELETE CASCADE,
-    FOREIGN KEY (status_id) REFERENCES status(status_id) ON DELETE SET NULL
-);
-
--- 🚀 Create the "task_category_question" table
-CREATE TABLE task_category_question (
-    question_id SERIAL PRIMARY KEY,
-    task_category_id INT NOT NULL,
-    question_text TEXT NOT NULL,
-    FOREIGN KEY (task_category_id) REFERENCES task_category(task_category_id) ON DELETE CASCADE
-);
-
--- 🚀 Create the "task_category_question_answer" table
-CREATE TABLE task_category_question_answer (
-    answer_id SERIAL PRIMARY KEY,
-    question_id INT NOT NULL,
-    user_id INT NOT NULL,
-    answer_text TEXT NOT NULL,
-    FOREIGN KEY (question_id) REFERENCES task_category_question(question_id) ON DELETE CASCADE,
-    FOREIGN KEY (user_id) REFERENCES users(user_id) ON DELETE CASCADE
-);
+Each question has multiple answers.
+If a question is deleted, all answers are also deleted (CASCADE).
