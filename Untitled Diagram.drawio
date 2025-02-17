@@ -1,6 +1,6 @@
 <mxfile host="app.diagrams.net" agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/133.0.0.0 Safari/537.36 Edg/133.0.0.0" version="26.0.13">
   <diagram name="Page-1" id="e56a1550-8fbb-45ad-956c-1786394a9013">
-    <mxGraphModel dx="1282" dy="661" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1100" pageHeight="850" background="none" math="0" shadow="0">
+    <mxGraphModel dx="1508" dy="778" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1100" pageHeight="850" background="none" math="0" shadow="0">
       <root>
         <mxCell id="0" />
         <mxCell id="1" parent="0" />
@@ -341,8 +341,11 @@
             </Array>
           </mxGeometry>
         </mxCell>
+        <mxCell id="3_jZ3jPT5YRdrS6x4TlJ-29" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;entryX=1;entryY=0.5;entryDx=0;entryDy=0;" edge="1" parent="1" source="FDP0G7_FQ-IaxKkqoNTh-56" target="FDP0G7_FQ-IaxKkqoNTh-1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
         <mxCell id="FDP0G7_FQ-IaxKkqoNTh-56" value="task_catergory_question_answer" style="swimlane;html=1;fontStyle=0;childLayout=stackLayout;horizontal=1;startSize=26;fillColor=#20FF6B;horizontalStack=0;resizeParent=1;resizeLast=0;collapsible=1;marginBottom=0;swimlaneFillColor=#ffffff;align=center;rounded=0;shadow=0;comic=0;labelBackgroundColor=none;strokeWidth=1;fontFamily=Verdana;fontSize=14;strokeColor=#36FF6A;fontColor=#393C56;" parent="1" vertex="1">
-          <mxGeometry x="1320" y="320" width="280" height="170" as="geometry" />
+          <mxGeometry x="1470" y="320" width="280" height="170" as="geometry" />
         </mxCell>
         <mxCell id="FDP0G7_FQ-IaxKkqoNTh-57" value="task_catergory_question_answer_id" style="shape=partialRectangle;top=0;left=0;right=0;bottom=1;html=1;align=left;verticalAlign=middle;fillColor=none;spacingLeft=34;spacingRight=4;whiteSpace=wrap;overflow=hidden;rotatable=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;dropTarget=0;fontStyle=5;strokeColor=#E07A5F;labelBackgroundColor=none;fontColor=#393C56;" parent="FDP0G7_FQ-IaxKkqoNTh-56" vertex="1">
           <mxGeometry y="26" width="280" height="30" as="geometry" />
@@ -356,7 +359,7 @@
         <mxCell id="FDP0G7_FQ-IaxKkqoNTh-60" value="FK" style="shape=partialRectangle;top=0;left=0;bottom=0;html=1;fillColor=none;align=left;verticalAlign=top;spacingLeft=4;spacingRight=4;whiteSpace=wrap;overflow=hidden;rotatable=0;points=[];portConstraint=eastwest;part=1;labelBackgroundColor=none;strokeColor=#E07A5F;fontColor=#393C56;" parent="FDP0G7_FQ-IaxKkqoNTh-59" vertex="1" connectable="0">
           <mxGeometry width="30" height="26" as="geometry" />
         </mxCell>
-        <mxCell id="FDP0G7_FQ-IaxKkqoNTh-61" value="answer (text) NOT NULL" style="shape=partialRectangle;top=0;left=0;right=0;bottom=0;html=1;align=left;verticalAlign=top;fillColor=none;spacingLeft=34;spacingRight=4;whiteSpace=wrap;overflow=hidden;rotatable=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;dropTarget=0;labelBackgroundColor=none;strokeColor=#E07A5F;fontColor=#393C56;" parent="FDP0G7_FQ-IaxKkqoNTh-56" vertex="1">
+        <mxCell id="FDP0G7_FQ-IaxKkqoNTh-61" value="answer (text)" style="shape=partialRectangle;top=0;left=0;right=0;bottom=0;html=1;align=left;verticalAlign=top;fillColor=none;spacingLeft=34;spacingRight=4;whiteSpace=wrap;overflow=hidden;rotatable=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;dropTarget=0;labelBackgroundColor=none;strokeColor=#E07A5F;fontColor=#393C56;" parent="FDP0G7_FQ-IaxKkqoNTh-56" vertex="1">
           <mxGeometry y="82" width="280" height="28" as="geometry" />
         </mxCell>
         <mxCell id="FDP0G7_FQ-IaxKkqoNTh-62" value="FK" style="shape=partialRectangle;top=0;left=0;bottom=0;html=1;fillColor=none;align=left;verticalAlign=top;spacingLeft=4;spacingRight=4;whiteSpace=wrap;overflow=hidden;rotatable=0;points=[];portConstraint=eastwest;part=1;labelBackgroundColor=none;strokeColor=#E07A5F;fontColor=#393C56;" parent="FDP0G7_FQ-IaxKkqoNTh-61" vertex="1" connectable="0">
@@ -409,7 +412,7 @@
             </Array>
           </mxGeometry>
         </mxCell>
-        <mxCell id="FDP0G7_FQ-IaxKkqoNTh-73" value="" style="edgeStyle=entityRelationEdgeStyle;fontSize=12;html=1;endArrow=ERoneToMany;startArrow=ERmandOne;rounded=0;strokeColor=#E07A5F;fontColor=#393C56;fillColor=#F2CC8F;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" parent="1" source="e1Z72pLPs2CvFWhqXE2E-139" target="FDP0G7_FQ-IaxKkqoNTh-65" edge="1">
+        <mxCell id="FDP0G7_FQ-IaxKkqoNTh-73" value="" style="edgeStyle=entityRelationEdgeStyle;fontSize=12;html=1;endArrow=ERoneToMany;startArrow=ERmandOne;rounded=0;strokeColor=#E07A5F;fontColor=#393C56;fillColor=#F2CC8F;exitX=0.997;exitY=0.375;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;exitPerimeter=0;" parent="1" source="e1Z72pLPs2CvFWhqXE2E-139" target="FDP0G7_FQ-IaxKkqoNTh-65" edge="1">
           <mxGeometry width="100" height="100" relative="1" as="geometry">
             <mxPoint x="1320" y="413" as="sourcePoint" />
             <mxPoint x="1355" as="targetPoint" />
@@ -470,13 +473,16 @@
             </Array>
           </mxGeometry>
         </mxCell>
-        <mxCell id="3_jZ3jPT5YRdrS6x4TlJ-23" value="Open answer" style="rounded=1;fillColor=#0057D8;strokeColor=none;html=1;whiteSpace=wrap;fontColor=#ffffff;align=center;verticalAlign=middle;fontStyle=0;fontSize=12;sketch=0;" vertex="1" parent="1">
-          <mxGeometry x="1190" y="530" width="86" height="33" as="geometry" />
-        </mxCell>
-        <mxCell id="3_jZ3jPT5YRdrS6x4TlJ-26" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" edge="1" parent="1" source="e1Z72pLPs2CvFWhqXE2E-141" target="3_jZ3jPT5YRdrS6x4TlJ-23">
+        <mxCell id="3_jZ3jPT5YRdrS6x4TlJ-26" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;entryX=-0.008;entryY=0.08;entryDx=0;entryDy=0;entryPerimeter=0;exitX=0.993;exitY=0.71;exitDx=0;exitDy=0;exitPerimeter=0;" edge="1" parent="1" source="e1Z72pLPs2CvFWhqXE2E-139" target="FDP0G7_FQ-IaxKkqoNTh-56">
           <mxGeometry relative="1" as="geometry">
-            <mxPoint x="1140" y="519" as="targetPoint" />
+            <mxPoint x="1220" y="519" as="targetPoint" />
           </mxGeometry>
+        </mxCell>
+        <mxCell id="3_jZ3jPT5YRdrS6x4TlJ-28" value="&lt;span style=&quot;color: rgb(0, 0, 0); font-family: Helvetica; font-size: 12px; font-style: normal; font-variant-ligatures: normal; font-variant-caps: normal; font-weight: 400; letter-spacing: normal; orphans: 2; text-align: center; text-indent: 0px; text-transform: none; widows: 2; word-spacing: 0px; -webkit-text-stroke-width: 0px; white-space: normal; background-color: rgb(251, 251, 251); text-decoration-thickness: initial; text-decoration-style: initial; text-decoration-color: initial; float: none; display: inline !important;&quot;&gt;&amp;nbsp;Upon cid_task created&lt;br&gt;&amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp;triggers &lt;br&gt;question_answer created&lt;br&gt;&amp;nbsp; &amp;nbsp; &amp;nbsp;(answer field is null)&amp;nbsp;&lt;/span&gt;" style="text;whiteSpace=wrap;html=1;" vertex="1" parent="1">
+          <mxGeometry x="1140" y="385" width="140" height="65" as="geometry" />
+        </mxCell>
+        <mxCell id="3_jZ3jPT5YRdrS6x4TlJ-30" value="&lt;div style=&quot;text-align: center;&quot;&gt;&lt;span style=&quot;background-color: transparent; color: light-dark(rgb(0, 0, 0), rgb(255, 255, 255));&quot;&gt;Up question_answer updated by user&lt;/span&gt;&lt;/div&gt;" style="text;whiteSpace=wrap;html=1;" vertex="1" parent="1">
+          <mxGeometry x="1290" y="520" width="250" height="65" as="geometry" />
         </mxCell>
       </root>
     </mxGraphModel>
