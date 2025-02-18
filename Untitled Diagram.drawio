@@ -1,6 +1,6 @@
 <mxfile host="app.diagrams.net" agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/133.0.0.0 Safari/537.36 Edg/133.0.0.0" version="26.0.14">
   <diagram name="Page-1" id="e56a1550-8fbb-45ad-956c-1786394a9013">
-    <mxGraphModel dx="1709" dy="881" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1100" pageHeight="850" background="none" math="0" shadow="0">
+    <mxGraphModel dx="1972" dy="1017" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1100" pageHeight="850" background="none" math="0" shadow="0">
       <root>
         <mxCell id="0" />
         <mxCell id="1" parent="0" />
@@ -439,8 +439,8 @@
         <mxCell id="3_jZ3jPT5YRdrS6x4TlJ-6" value="status = &quot;complete&quot; or &quot;cancel&quot;&lt;br&gt;triggers&lt;br&gt;closing_date = &quot;TIMESTAMP&quot;&lt;br&gt;otherwise Null" style="text;html=1;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;" parent="1" vertex="1">
           <mxGeometry x="40" y="490" width="280" height="40" as="geometry" />
         </mxCell>
-        <mxCell id="3_jZ3jPT5YRdrS6x4TlJ-15" value="&lt;span style=&quot;color: rgb(0, 0, 0); font-family: Helvetica; font-size: 12px; font-style: normal; font-variant-ligatures: normal; font-variant-caps: normal; font-weight: 400; letter-spacing: normal; orphans: 2; text-indent: 0px; text-transform: none; widows: 2; word-spacing: 0px; -webkit-text-stroke-width: 0px; white-space: normal; background-color: rgb(251, 251, 251); text-decoration-thickness: initial; text-decoration-style: initial; text-decoration-color: initial; float: none; display: inline !important;&quot;&gt;email sent to user upon question_answer created&lt;br&gt;on-daily email sent if overdue&lt;/span&gt;" style="text;whiteSpace=wrap;html=1;align=center;" parent="1" vertex="1">
-          <mxGeometry x="1690" y="530" width="190" height="38" as="geometry" />
+        <mxCell id="3_jZ3jPT5YRdrS6x4TlJ-15" value="&lt;span style=&quot;color: rgb(0, 0, 0); font-family: Helvetica; font-size: 12px; font-style: normal; font-variant-ligatures: normal; font-variant-caps: normal; font-weight: 400; letter-spacing: normal; orphans: 2; text-indent: 0px; text-transform: none; widows: 2; word-spacing: 0px; -webkit-text-stroke-width: 0px; white-space: normal; background-color: rgb(251, 251, 251); text-decoration-thickness: initial; text-decoration-style: initial; text-decoration-color: initial; float: none; display: inline !important;&quot;&gt;email sent to user upon question_answer created&lt;br&gt;on-daily email sent if overdue and status = &quot;rejected&quot;&amp;nbsp; or &quot;on-going&quot;&lt;/span&gt;" style="text;whiteSpace=wrap;html=1;align=center;" parent="1" vertex="1">
+          <mxGeometry x="1690" y="530" width="220" height="70" as="geometry" />
         </mxCell>
         <mxCell id="3_jZ3jPT5YRdrS6x4TlJ-16" value="" style="endArrow=classic;html=1;rounded=0;exitX=0.5;exitY=1;exitDx=0;exitDy=0;" parent="1" edge="1" target="ITdXdihe4Q5bMRdSFgDj-5" source="FDP0G7_FQ-IaxKkqoNTh-56">
           <mxGeometry relative="1" as="geometry">
@@ -525,8 +525,8 @@
         <mxCell id="ITdXdihe4Q5bMRdSFgDj-19" value="" style="shape=message;html=1;outlineConnect=0;" vertex="1" parent="1">
           <mxGeometry x="1549.9966666666664" y="850" width="20" height="14" as="geometry" />
         </mxCell>
-        <mxCell id="ITdXdihe4Q5bMRdSFgDj-20" value="send email to user.&lt;br&gt;if status is complete one-email&lt;br&gt;if status is rẹjected - send email on daily basis" style="text;whiteSpace=wrap;html=1;align=center;" vertex="1" parent="1">
-          <mxGeometry x="1429" y="870" width="270" height="80" as="geometry" />
+        <mxCell id="ITdXdihe4Q5bMRdSFgDj-20" value="send email to user." style="text;whiteSpace=wrap;html=1;align=center;" vertex="1" parent="1">
+          <mxGeometry x="1429" y="870" width="261" height="30" as="geometry" />
         </mxCell>
       </root>
     </mxGraphModel>
