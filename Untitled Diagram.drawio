@@ -623,6 +623,12 @@
         <mxCell id="bHW_SfKrpkaXBHrzmRuT-4" value="" style="shape=image;html=1;verticalAlign=top;verticalLabelPosition=bottom;labelBackgroundColor=#ffffff;imageAspect=0;aspect=fixed;image=https://cdn4.iconfinder.com/data/icons/icocentre-free-icons/137/f-check_256-128.png" vertex="1" parent="1">
           <mxGeometry x="150" y="162" width="32" height="32" as="geometry" />
         </mxCell>
+        <mxCell id="bHW_SfKrpkaXBHrzmRuT-5" value="" style="shape=image;html=1;verticalAlign=top;verticalLabelPosition=bottom;labelBackgroundColor=#ffffff;imageAspect=0;aspect=fixed;image=https://cdn4.iconfinder.com/data/icons/icocentre-free-icons/137/f-check_256-128.png" vertex="1" parent="1">
+          <mxGeometry x="670" y="30" width="32" height="32" as="geometry" />
+        </mxCell>
+        <mxCell id="bHW_SfKrpkaXBHrzmRuT-6" value="" style="shape=image;html=1;verticalAlign=top;verticalLabelPosition=bottom;labelBackgroundColor=#ffffff;imageAspect=0;aspect=fixed;image=https://cdn4.iconfinder.com/data/icons/icocentre-free-icons/137/f-check_256-128.png" vertex="1" parent="1">
+          <mxGeometry x="1124.5" y="130" width="32" height="32" as="geometry" />
+        </mxCell>
       </root>
     </mxGraphModel>
   </diagram>
