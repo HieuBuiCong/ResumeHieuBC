@@ -38,7 +38,8 @@ BEFORE INSERT OR UPDATE ON cid
 FOR EACH ROW
 EXECUTE FUNCTION update_closing_date();
 
--- 🚀 Function to mark CIDs as "overdue" if the deadline has passed (ONLY WHEN IN-PROGRESS)
+
+-- 🚀 Function to check and update overdue status dynamically
 CREATE OR REPLACE FUNCTION check_overdue_status()
 RETURNS TRIGGER AS $$
 BEGIN
@@ -46,11 +47,17 @@ BEGIN
     IF NEW.deadline IS NOT NULL AND NEW.deadline < NOW() AND NEW.status = 'in-progress' THEN
         NEW.status = 'overdue';
     END IF;
+
+    -- ✅ If the deadline is changed to a future date and the status is "overdue", reset to "in-progress"
+    IF NEW.deadline IS NOT NULL AND NEW.deadline > NOW() AND OLD.status = 'overdue' THEN
+        NEW.status = 'in-progress';
+    END IF;
+
     RETURN NEW;
 END;
 $$ LANGUAGE plpgsql;
 
--- 🚀 Attach the trigger to check for overdue status
+-- 🚀 Attach the trigger to check for overdue status dynamically
 CREATE TRIGGER cid_overdue_check
 BEFORE UPDATE OR INSERT ON cid
 FOR EACH ROW
