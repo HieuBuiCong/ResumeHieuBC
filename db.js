@@ -1,98 +1,35 @@
+import express from "express";
 import {
-  createCID,
-  getAllCIDs,
-  getCIDById,
-  updateCID,
-  deleteCID,
-  checkOverdueCIDs
-} from "../models/cid.model.js";
+  getCIDs,
+  getCID,
+  addCID,
+  editCID,
+  removeCID,
+  sendSpecificCIDSummaryEmail,
+} from "../controllers/cid.controller.js";
+import authMiddleware from "../middleware/auth.middleware.js";
+import roleMiddleware from "../middleware/role.middleware.js";
 
-// ✅ Get all CID entries
-export const getCIDs = async (req, res) => {
-  try {
-    const cids = await getAllCIDs();
-    res.status(200).json(cids);
-  } catch (error) {
-    res.status(500).json({ error: error.message });
-  }
-};
+const router = express.Router();
 
-// ✅ Get a single CID by ID
-export const getCID = async (req, res) => {
-  try {
-    const cid = await getCIDById(req.params.id);
-    if (!cid) {
-      return res.status(404).json({ message: "CID not found" });
-    }
-    res.status(200).json(cid);
-  } catch (error) {
-    res.status(500).json({ error: error.message });
-  }
-};
+// ✅ Get all CIDs 
+router.get("/", authMiddleware, getCIDs);
 
-// ✅ Create a new CID entry using part_number
-export const addCID = async (req, res) => {
-  try {
-    const { part_number, next_rev, sending_date } = req.body;
+// ✅ Get a specific CID by ID
+router.get("/:id", authMiddleware, getCID);
 
-    // Validate required fields
-    if (!part_number || !next_rev || !sending_date) {
-      return res.status(400).json({
-        message: "Part number, next revision, and sending date are required"
-      });
-    }
+// ✅ Create a new CID (Admin Only)
+router.post("/", authMiddleware, roleMiddleware("create_cid"), addCID);
 
-    const cid = await createCID(req.body);
-    res.status(201).json({
-      message: "CID created successfully",
-      cid
-    });
-  } catch (error) {
-    res.status(400).json({ error: error.message });
-  }
-};
+// ✅ Update a CID (Admin Only)
+router.put("/:id", authMiddleware, roleMiddleware("update_cid"), editCID);
 
-// ✅ Update a CID entry using part_number if provided
-export const editCID = async (req, res) => {
-  try {
-    const updatedCID = await updateCID(req.params.id, req.body);
-    if (!updatedCID) {
-      return res.status(404).json({ message: "CID not found" });
-    }
-    res.status(200).json({
-      message: "CID updated successfully",
-      updatedCID
-    });
-  } catch (error) {
-    res.status(400).json({ error: error.message });
-  }
-};
+// ✅ Delete a CID (Admin Only)
+router.delete("/:id", authMiddleware, roleMiddleware("delete_cid"), removeCID);
 
-// ✅ Delete a CID entry
-export const removeCID = async (req, res) => {
-  try {
-    const deletedCID = await deleteCID(req.params.id);
-    if (!deletedCID) {
-      return res.status(404).json({ message: "CID not found" });
-    }
-    res.status(200).json({
-      message: "CID deleted successfully",
-      deletedCID
-    });
-  } catch (error) {
-    res.status(500).json({ error: error.message });
-  }
-};
 
-// ✅ Endpoint to manually trigger overdue checks (optional)
-export const triggerOverdueCheck = async (req, res) => {
-  try {
-    const overdueCIDs = await checkOverdueCIDs();
-    res.status(200).json({
-      message: "Overdue check completed successfully",
-      overdueCIDs
-    });
-  } catch (error) {
-    res.status(500).json({ error: error.message });
-  }
-};
+// ✅ Admin triggers the email summary for all CIDs
+router.post("/send-summary", authMiddleware, roleMiddleware("send_summary"), sendSpecificCIDSummaryEmail);
+
+
+export default router;
