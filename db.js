@@ -1,37 +1,53 @@
-import express from "express";
-import {
-  getCIDs,
-  getCID,
-  addCID,
-  editCID,
-  removeCID,
-  sendSpecificCIDSummaryEmail,
-  triggerOverdueCheck, // Optional: Only if manually triggering overdue checks
-} from "../controllers/cid.controller.js";
-import authMiddleware from "../middleware/auth.middleware.js";
-import roleMiddleware from "../middleware/role.middleware.js";
+import pool from "../config/database.js";
 
-const router = express.Router();
+// ✅ Create a new task category question
+export const createTaskCategoryQuestion = async (questionName, taskCategoryId) => {
+  const query = `
+    INSERT INTO task_category_question (question_name, task_category_id) 
+    VALUES ($1, $2) RETURNING *`;
+  const values = [questionName, taskCategoryId];
 
-// ✅ Get all CIDs
-router.get("/", authMiddleware, getCIDs);
+  const { rows } = await pool.query(query, values);
+  return rows[0];
+};
 
-// ✅ Get a specific CID by ID
-router.get("/:id", authMiddleware, getCID);
+// ✅ Get all task category questions
+export const getAllTaskCategoryQuestions = async () => {
+  const query = "SELECT * FROM task_category_question ORDER BY task_category_question_id ASC";
+  const { rows } = await pool.query(query);
+  return rows;
+};
 
-// ✅ Create a new CID (using part_number from frontend)
-router.post("/", authMiddleware, roleMiddleware("create_cid"), addCID);
+// ✅ Get a task category question by ID
+export const getTaskCategoryQuestionById = async (taskCategoryQuestionId) => {
+  const query = "SELECT * FROM task_category_question WHERE task_category_question_id = $1";
+  const { rows } = await pool.query(query, [taskCategoryQuestionId]);
+  return rows[0];
+};
 
-// ✅ Update a CID (using part_number if provided)
-router.put("/:id", authMiddleware, roleMiddleware("update_cid"), editCID);
+// ✅ Get questions by task category ID
+export const getQuestionsByCategoryId = async (taskCategoryId) => {
+  const query = "SELECT * FROM task_category_question WHERE task_category_id = $1";
+  const { rows } = await pool.query(query, [taskCategoryId]);
+  return rows;
+};
 
-// ✅ Delete a CID
-router.delete("/:id", authMiddleware, roleMiddleware("delete_cid"), removeCID);
+// ✅ Update a task category question
+export const updateTaskCategoryQuestion = async (taskCategoryQuestionId, updatedFields) => {
+  const fields = Object.keys(updatedFields)
+    .map((key, index) => `${key} = $${index + 1}`)
+    .join(", ");
+  const values = Object.values(updatedFields);
 
-// ✅ Send CID summary email (admin only)
-router.post("/send-summary", authMiddleware, roleMiddleware("send_summary"), sendSpecificCIDSummaryEmail);
+  const query = `UPDATE task_category_question SET ${fields} WHERE task_category_question_id = $${values.length + 1} RETURNING *`;
 
-// ✅ (Optional) Manually trigger overdue checks 
-router.post("/check-overdue", authMiddleware, roleMiddleware("manage_cid"), triggerOverdueCheck);
+  const { rows } = await pool.query(query, [...values, taskCategoryQuestionId]);
+  return rows[0];
+};
 
-export default router;
+// ✅ Delete a task category question
+export const deleteTaskCategoryQuestion = async (taskCategoryQuestionId) => {
+  const query = "DELETE FROM task_category_question WHERE task_category_question_id = $1 RETURNING *";
+  const { rows } = await pool.query(query, [taskCategoryQuestionId]);
+  return rows[0];
+};
