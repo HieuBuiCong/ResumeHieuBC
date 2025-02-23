@@ -212,3 +212,19 @@ export const sendSpecificCIDSummaryEmail = async (req, res) => {
       res.status(500).json({ error: error.message });
     }
   };
+--------------
+-- 🚀 Create the "cid" table 
+CREATE TABLE cid (
+    cid_id SERIAL PRIMARY KEY,
+    product_id INT NOT NULL,
+    prev_rev VARCHAR(50),
+    next_rev VARCHAR(50) NOT NULL,
+    change_notice VARCHAR(255),
+    supplier_id INT,
+    rework_or_not BOOLEAN,
+    OTS_or_not BOOLEAN,
+    created_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    closing_date DATE,
+    note TEXT,
+    FOREIGN KEY (product_id) REFERENCES product(product_id) ON DELETE CASCADE
+);
