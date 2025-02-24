@@ -14,7 +14,7 @@ const getTaskCategoryIdFromTaskName = async (taskName) => {
   return rows[0]?.task_category_id;
 };
 
-// ✅ Create a new CID task (Admin Only)
+// ✅ Create a new CID task (Admin Only) - Now supports dependencies
 export const createCIDTask = async (taskData) => {
   const assignee_id = await getUserIdFromUsername(taskData.assignee_name);
   if (!assignee_id) throw new Error(`The assignee name: ${taskData.assignee_name} not found`);
@@ -23,8 +23,8 @@ export const createCIDTask = async (taskData) => {
   if (!task_category_id) throw new Error(`Task name: ${taskData.task_name} not found`);
 
   const query = `
-    INSERT INTO cid_task (task_category_id, cid_id, status, assignee_id, deadline)
-    VALUES ($1, $2, COALESCE($3, 'in-progress'), $4, $5)
+    INSERT INTO cid_task (task_category_id, cid_id, status, assignee_id, deadline, dependency_cid_id, dependency_date)
+    VALUES ($1, $2, COALESCE($3, 'in-progress'), $4, $5, $6, $7::INTERVAL)
     RETURNING *`;
 
   const values = [
@@ -33,12 +33,14 @@ export const createCIDTask = async (taskData) => {
     taskData.status,
     assignee_id,
     taskData.deadline,
+    taskData.dependency_cid_id || null, // ✅ Allows NULL if no dependency
+    taskData.dependency_date || null   // ✅ Ensure INTERVAL format
   ];
   const { rows } = await pool.query(query, values);
   return rows[0];
 };
 
-// ✅ Get all CID tasks (Users can see all) - Return usernames & task names instead of IDs
+// ✅ Get all CID tasks - Now includes dependency_cid_id and dependency_date
 export const getAllCIDTasks = async () => {
   const query = `
     SELECT 
@@ -51,7 +53,9 @@ export const getAllCIDTasks = async () => {
       ct.deadline, 
       ct.created_date, 
       ct.submitted_date, 
-      ct.approval_date
+      ct.approval_date,
+      ct.dependency_cid_id,
+      ct.dependency_date
     FROM cid_task ct
     JOIN users u1 ON ct.assignee_id = u1.user_id
     LEFT JOIN users u2 ON ct.task_approver_id = u2.user_id
@@ -63,7 +67,7 @@ export const getAllCIDTasks = async () => {
   return rows;
 };
 
-// ✅ Get a CID task by ID - Return usernames & task name instead of IDs
+// ✅ Get a CID task by ID - Now includes dependencies
 export const getCIDTaskById = async (cidTaskId) => {
   const query = `
     SELECT 
@@ -76,7 +80,9 @@ export const getCIDTaskById = async (cidTaskId) => {
       ct.deadline, 
       ct.created_date, 
       ct.submitted_date, 
-      ct.approval_date
+      ct.approval_date,
+      ct.dependency_cid_id,
+      ct.dependency_date
     FROM cid_task ct
     JOIN users u1 ON ct.assignee_id = u1.user_id
     LEFT JOIN users u2 ON ct.task_approver_id = u2.user_id
@@ -88,7 +94,7 @@ export const getCIDTaskById = async (cidTaskId) => {
   return rows[0];
 };
 
-// ✅ Update a CID task (Admin Only)
+// ✅ Update a CID task (Admin Only) - Now allows updating dependencies
 export const updateCIDTask = async (cidTaskId, updatedFields) => {
   const fields = Object.keys(updatedFields)
     .map((key, index) => `${key} = $${index + 1}`)
@@ -100,38 +106,7 @@ export const updateCIDTask = async (cidTaskId, updatedFields) => {
   return rows[0];
 };
 
-// ✅ Delete a CID task (Admin Only)
-export const deleteCIDTask = async (cidTaskId) => {
-  const query = "DELETE FROM cid_task WHERE cid_task_id = $1 RETURNING *";
-  const { rows } = await pool.query(query, [cidTaskId]);
-  return rows[0];
-};
-
-// ✅ Update only the status (User Permission by answering question) - Includes submitted_date update
-export const updateCIDTaskStatus = async (cidTaskId, newStatus) => {
-  const query = `
-    UPDATE cid_task 
-    SET status = $1
-    WHERE cid_task_id = $2
-    RETURNING *`;
-
-  const { rows } = await pool.query(query, [newStatus, cidTaskId]);
-  return rows[0];
-};
-
-// ✅ Approve or Reject Task (Updates `approval_date` and `task_approver_id`)
-export const updateCIDTaskApproval = async (cidTaskId, newStatus, approverId) => {
-  const query = `
-    UPDATE cid_task 
-    SET status = $1, approval_date = CURRENT_TIMESTAMP, task_approver_id = $2 
-    WHERE cid_task_id = $3
-    RETURNING *`;
-
-  const { rows } = await pool.query(query, [newStatus, approverId, cidTaskId]);
-  return rows[0];
-};
-
-// ✅ Get CID tasks assigned to a specific user
+// ✅ Get CID tasks assigned to a specific user - Now includes dependencies
 export const getCIDTasksByUser = async (userId) => {
   const query = `
     SELECT 
@@ -144,7 +119,9 @@ export const getCIDTasksByUser = async (userId) => {
       ct.deadline, 
       ct.created_date, 
       ct.submitted_date, 
-      ct.approval_date
+      ct.approval_date,
+      ct.dependency_cid_id,
+      ct.dependency_date
     FROM cid_task ct
     JOIN users u1 ON ct.assignee_id = u1.user_id
     LEFT JOIN users u2 ON ct.task_approver_id = u2.user_id
@@ -157,7 +134,7 @@ export const getCIDTasksByUser = async (userId) => {
   return rows;
 };
 
-// ✅ Get all CID tasks for a specific CID
+// ✅ Get all CID tasks for a specific CID - Now includes dependencies
 export const getCIDTasksByCID = async (cid_id) => {
   const query = `
     SELECT 
@@ -170,7 +147,9 @@ export const getCIDTasksByCID = async (cid_id) => {
       ct.deadline, 
       ct.created_date, 
       ct.submitted_date, 
-      ct.approval_date
+      ct.approval_date,
+      ct.dependency_cid_id,
+      ct.dependency_date
     FROM cid_task ct
     JOIN users u1 ON ct.assignee_id = u1.user_id
     LEFT JOIN users u2 ON ct.task_approver_id = u2.user_id
