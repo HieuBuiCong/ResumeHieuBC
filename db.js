@@ -1,61 +1,184 @@
-ALTER TABLE cid_task 
-ADD COLUMN dependency_cid_id INT,
-ADD COLUMN dependency_date INTERVAL;
-ALTER TABLE cid_task 
-ADD CONSTRAINT fk_dependency_cid
-FOREIGN KEY (dependency_cid_id) REFERENCES cid_task(cid_task_id) ON DELETE SET NULL;
+import pool from "../config/database.js";
 
------
+// Helper function to get user_id from username
+const getUserIdFromUsername = async (username) => {
+  const query = `SELECT user_id FROM users WHERE username = $1`;
+  const { rows } = await pool.query(query, [username]);
+  return rows[0]?.user_id;
+};
 
-CREATE OR REPLACE FUNCTION manage_task_status_updates()
-RETURNS TRIGGER AS $$
-BEGIN
-    -- 🚀 1️⃣ If status is "complete" or "cancel", update approval_date
-    IF NEW.status = 'complete' OR NEW.status = 'cancel' THEN
-        NEW.approval_date = CURRENT_TIMESTAMP;
-    ELSE
-        NEW.approval_date = NULL;  -- ✅ Reset approval_date if status is changed back
-    END IF;
+// Helper function to get task_category_id from task_name
+const getTaskCategoryIdFromTaskName = async (taskName) => {
+  const query = `SELECT task_category_id FROM task_category WHERE task_name = $1`;
+  const { rows } = await pool.query(query, [taskName]);
+  return rows[0]?.task_category_id;
+};
 
-    -- 🚀 2️⃣ If status is "submitted", update submitted_date
-    IF NEW.status = 'submitted' THEN
-        NEW.submitted_date = CURRENT_TIMESTAMP;
-    END IF;
+// ✅ Create a new CID task (Admin Only)
+export const createCIDTask = async (taskData) => {
+  const assignee_id = await getUserIdFromUsername(taskData.assignee_name);
+  if (!assignee_id) throw new Error(`The assignee name: ${taskData.assignee_name} not found`);
 
-    -- 🚀 3️⃣ If the deadline has passed and status is "in-progress", set status to "overdue"
-    IF NEW.deadline IS NOT NULL AND NEW.deadline < NOW() AND NEW.status = 'in-progress' THEN
-        NEW.status = 'overdue';
-    END IF;
+  const task_category_id = await getTaskCategoryIdFromTaskName(taskData.task_name);
+  if (!task_category_id) throw new Error(`Task name: ${taskData.task_name} not found`);
 
-    -- ✅ If the deadline is extended and the task was "overdue", reset it back to "in-progress"
-    IF NEW.deadline IS NOT NULL AND NEW.deadline > NOW() AND OLD.status = 'overdue' THEN
-        NEW.status = 'in-progress';
-    END IF;
+  const query = `
+    INSERT INTO cid_task (task_category_id, cid_id, status, assignee_id, deadline)
+    VALUES ($1, $2, COALESCE($3, 'in-progress'), $4, $5)
+    RETURNING *`;
 
-    -- 🚀 4️⃣ Dependency Logic (Lowest Priority)
-    IF NEW.dependency_cid_id IS NOT NULL THEN
-        -- ✅ If the dependenting task is NOT "complete" or "cancel", and dependent task status is not "complete", "submitted", or "cancel", set to "pending"
-        IF (SELECT status FROM cid_task WHERE cid_task_id = NEW.dependency_cid_id) NOT IN ('complete', 'cancel')
-           AND NEW.status NOT IN ('complete', 'submitted', 'cancel') THEN
-            NEW.status = 'pending';
-        END IF;
+  const values = [
+    task_category_id,
+    taskData.cid_id,
+    taskData.status,
+    assignee_id,
+    taskData.deadline,
+  ];
+  const { rows } = await pool.query(query, values);
+  return rows[0];
+};
 
-        -- ✅ If the dependenting task is "complete" or "cancel", and dependent task status is not "complete", "submitted", or "cancel", set to "in-progress"
-        IF (SELECT status FROM cid_task WHERE cid_task_id = NEW.dependency_cid_id) IN ('complete', 'cancel')
-           AND NEW.status NOT IN ('complete', 'submitted', 'cancel') THEN
-            NEW.status = 'in-progress';
-            NEW.deadline = (SELECT approval_date FROM cid_task WHERE cid_task_id = NEW.dependency_cid_id) + NEW.dependency_date;
-        END IF;
-    END IF;
+// ✅ Get all CID tasks (Users can see all) - Return usernames & task names instead of IDs
+export const getAllCIDTasks = async () => {
+  const query = `
+    SELECT 
+      ct.cid_task_id, 
+      tc.task_name, 
+      c.cid_id, 
+      ct.status, 
+      u1.username AS assignee_name, 
+      u2.username AS approver_name, 
+      ct.deadline, 
+      ct.created_date, 
+      ct.submitted_date, 
+      ct.approval_date
+    FROM cid_task ct
+    JOIN users u1 ON ct.assignee_id = u1.user_id
+    LEFT JOIN users u2 ON ct.task_approver_id = u2.user_id
+    JOIN task_category tc ON ct.task_category_id = tc.task_category_id
+    JOIN cid c ON ct.cid_id = c.cid_id
+    ORDER BY ct.cid_task_id ASC`;
 
-    RETURN NEW;
-END;
-$$ LANGUAGE plpgsql;
+  const { rows } = await pool.query(query);
+  return rows;
+};
 
--- 🚀 Attach the trigger to handle ALL logic in one place
-DROP TRIGGER IF EXISTS cid_task_overdue_check ON cid_task;
-DROP TRIGGER IF EXISTS task_status_update ON cid_task;
-CREATE TRIGGER unified_task_status_trigger
-BEFORE INSERT OR UPDATE ON cid_task
-FOR EACH ROW
-EXECUTE FUNCTION manage_task_status_updates();
+// ✅ Get a CID task by ID - Return usernames & task name instead of IDs
+export const getCIDTaskById = async (cidTaskId) => {
+  const query = `
+    SELECT 
+      ct.cid_task_id, 
+      tc.task_name, 
+      c.cid_id, 
+      ct.status, 
+      u1.username AS assignee_name, 
+      u2.username AS approver_name, 
+      ct.deadline, 
+      ct.created_date, 
+      ct.submitted_date, 
+      ct.approval_date
+    FROM cid_task ct
+    JOIN users u1 ON ct.assignee_id = u1.user_id
+    LEFT JOIN users u2 ON ct.task_approver_id = u2.user_id
+    JOIN task_category tc ON ct.task_category_id = tc.task_category_id
+    JOIN cid c ON ct.cid_id = c.cid_id
+    WHERE ct.cid_task_id = $1`;
+
+  const { rows } = await pool.query(query, [cidTaskId]);
+  return rows[0];
+};
+
+// ✅ Update a CID task (Admin Only)
+export const updateCIDTask = async (cidTaskId, updatedFields) => {
+  const fields = Object.keys(updatedFields)
+    .map((key, index) => `${key} = $${index + 1}`)
+    .join(", ");
+  const values = Object.values(updatedFields);
+
+  const query = `UPDATE cid_task SET ${fields} WHERE cid_task_id = $${values.length + 1} RETURNING *`;
+  const { rows } = await pool.query(query, [...values, cidTaskId]);
+  return rows[0];
+};
+
+// ✅ Delete a CID task (Admin Only)
+export const deleteCIDTask = async (cidTaskId) => {
+  const query = "DELETE FROM cid_task WHERE cid_task_id = $1 RETURNING *";
+  const { rows } = await pool.query(query, [cidTaskId]);
+  return rows[0];
+};
+
+// ✅ Update only the status (User Permission by answering question) - Includes submitted_date update
+export const updateCIDTaskStatus = async (cidTaskId, newStatus) => {
+  const query = `
+    UPDATE cid_task 
+    SET status = $1
+    WHERE cid_task_id = $2
+    RETURNING *`;
+
+  const { rows } = await pool.query(query, [newStatus, cidTaskId]);
+  return rows[0];
+};
+
+// ✅ Approve or Reject Task (Updates `approval_date` and `task_approver_id`)
+export const updateCIDTaskApproval = async (cidTaskId, newStatus, approverId) => {
+  const query = `
+    UPDATE cid_task 
+    SET status = $1, approval_date = CURRENT_TIMESTAMP, task_approver_id = $2 
+    WHERE cid_task_id = $3
+    RETURNING *`;
+
+  const { rows } = await pool.query(query, [newStatus, approverId, cidTaskId]);
+  return rows[0];
+};
+
+// ✅ Get CID tasks assigned to a specific user
+export const getCIDTasksByUser = async (userId) => {
+  const query = `
+    SELECT 
+      ct.cid_task_id, 
+      tc.task_name, 
+      c.cid_id, 
+      ct.status, 
+      u1.username AS assignee_name, 
+      u2.username AS approver_name, 
+      ct.deadline, 
+      ct.created_date, 
+      ct.submitted_date, 
+      ct.approval_date
+    FROM cid_task ct
+    JOIN users u1 ON ct.assignee_id = u1.user_id
+    LEFT JOIN users u2 ON ct.task_approver_id = u2.user_id
+    JOIN task_category tc ON ct.task_category_id = tc.task_category_id
+    JOIN cid c ON ct.cid_id = c.cid_id
+    WHERE ct.assignee_id = $1
+    ORDER BY ct.cid_task_id ASC`;
+
+  const { rows } = await pool.query(query, [userId]);
+  return rows;
+};
+
+// ✅ Get all CID tasks for a specific CID
+export const getCIDTasksByCID = async (cid_id) => {
+  const query = `
+    SELECT 
+      ct.cid_task_id, 
+      tc.task_name, 
+      c.cid_id, 
+      ct.status, 
+      u1.username AS assignee_name, 
+      u2.username AS approver_name, 
+      ct.deadline, 
+      ct.created_date, 
+      ct.submitted_date, 
+      ct.approval_date
+    FROM cid_task ct
+    JOIN users u1 ON ct.assignee_id = u1.user_id
+    LEFT JOIN users u2 ON ct.task_approver_id = u2.user_id
+    JOIN task_category tc ON ct.task_category_id = tc.task_category_id
+    JOIN cid c ON ct.cid_id = c.cid_id
+    WHERE ct.cid_id = $1
+    ORDER BY ct.cid_task_id ASC`;
+
+  const { rows } = await pool.query(query, [cid_id]);
+  return rows;
+};
