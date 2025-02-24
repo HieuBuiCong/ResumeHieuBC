@@ -1,58 +1,49 @@
- {
-            "cid_task_id": 1,
-            "task_name": "Measuring OTS",
-            "cid_id": 1,
-            "status": "overdue",
-            "assignee_name": "DuyVanDang",
-            "approver_name": null,
-            "deadline": "2024-01-09T17:00:00.000Z",
-            "created_date": "2025-02-24T08:54:09.914Z",
-            "submitted_date": "2025-02-24T11:17:36.922Z",
-            "approval_date": null,
-            "dependency_cid_id": null,
-            "dependency_date": null
-        },
-        {
-            "cid_task_id": 3,
-            "task_name": "Check and update ECS",
-            "cid_id": 1,
-            "status": "submitted",
-            "assignee_name": "DuyVanDang",
-            "approver_name": null,
-            "deadline": "2024-01-11T17:00:00.000Z",
-            "created_date": "2025-02-24T13:58:45.390Z",
-            "submitted_date": "2025-02-24T15:45:13.687Z",
-            "approval_date": null,
-            "dependency_cid_id": null,
-            "dependency_date": null
-        },
-        {
-            "cid_task_id": 4,
-            "task_name": "Approve OTS result",
-            "cid_id": 1,
-            "status": "submitted",
-            "assignee_name": "TungOngNgoc",
-            "approver_name": null,
-            "deadline": "2025-09-11T17:00:00.000Z",
-            "created_date": "2025-02-24T15:05:05.338Z",
-            "submitted_date": "2025-02-24T15:21:05.136Z",
-            "approval_date": null,
-            "dependency_cid_id": null,
-            "dependency_date": null
-        },
-        {
-            "cid_task_id": 5,
-            "task_name": "Approve OTS result",
-            "cid_id": 4,
-            "status": "in-progress",
-            "assignee_name": "TungOngNgoc",
-            "approver_name": null,
-            "deadline": "2025-02-27T14:48:30.515Z",
-            "created_date": "2025-02-24T17:20:55.125Z",
-            "submitted_date": null,
-            "approval_date": null,
-            "dependency_cid_id": 1,
-            "dependency_date": {
-                "days": 3
-            }
-        }
+CREATE OR REPLACE FUNCTION manage_task_status_updates()
+RETURNS TRIGGER AS $$
+BEGIN
+    -- 🚀 1️⃣ If status is "complete" or "cancel", update approval_date
+    IF NEW.status = 'complete' OR NEW.status = 'cancel' THEN
+        NEW.approval_date = CURRENT_TIMESTAMP;
+    ELSE
+        NEW.approval_date = NULL;  -- ✅ Reset approval_date if status is changed back
+    END IF;
+
+    -- 🚀 2️⃣ If status is "submitted", update submitted_date
+    IF NEW.status = 'submitted' THEN
+        NEW.submitted_date = CURRENT_TIMESTAMP;
+    END IF;
+
+    -- 🚀 3️⃣ If the deadline has passed and status is "in-progress", set status to "overdue"
+    IF NEW.deadline IS NOT NULL AND NEW.deadline < NOW() AND NEW.status = 'in-progress' THEN
+        NEW.status = 'overdue';
+    END IF;
+
+    -- ✅ If the deadline is extended and the task was "overdue", reset it back to "in-progress"
+    IF NEW.deadline IS NOT NULL AND NEW.deadline > NOW() AND OLD.status = 'overdue' THEN
+        NEW.status = 'in-progress';
+    END IF;
+
+    -- 🚀 4️⃣ **Dependency Logic (Runs After Overdue Check)**
+    IF NEW.dependency_cid_id IS NOT NULL THEN
+        -- ✅ **If the dependenting task is NOT "complete", "cancel", or "submitted", the dependent task must be "pending"**
+        IF (SELECT status FROM cid_task WHERE cid_task_id = NEW.dependency_cid_id) NOT IN ('complete', 'cancel', 'submitted') THEN
+            NEW.status = 'pending';
+        END IF;
+
+        -- ✅ **If the dependenting task is "complete" or "cancel", update dependent task to "in-progress"**
+        IF (SELECT status FROM cid_task WHERE cid_task_id = NEW.dependency_cid_id) IN ('complete', 'cancel') THEN
+            NEW.status = 'in-progress';
+            NEW.deadline = (SELECT deadline FROM cid_task WHERE cid_task_id = NEW.dependency_cid_id) + NEW.dependency_date;
+        END IF;
+    END IF;
+
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+-- 🚀 Attach the trigger to handle ALL logic in one place
+DROP TRIGGER IF EXISTS unified_task_status_trigger ON cid_task;
+CREATE TRIGGER unified_task_status_trigger
+BEFORE INSERT OR UPDATE ON cid_task
+FOR EACH ROW
+EXECUTE FUNCTION manage_task_status_updates();
