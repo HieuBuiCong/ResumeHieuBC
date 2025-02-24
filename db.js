@@ -1,64 +1,148 @@
--- 🚀 Create the "cid_task" table
-CREATE TABLE cid_task (
-    cid_task_id SERIAL PRIMARY KEY,
-    task_category_id INT NOT NULL,
-    cid_id INT NOT NULL,
-    status VARCHAR(20) NOT NULL DEFAULT 'in-progress' CHECK (status IN ('in-progress', 'complete', 'cancel', 'pending', 'overdue', 'submitted')),
-    assignee_id INT NOT NULL,
-    deadline TIMESTAMP NOT NULL,
-    created_date TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP, 
-    task_approver_id INT,
-    submitted_date TIMESTAMP, 
-    approval_date TIMESTAMP DEFAULT NULL,
-    send_email_to_leader BOOLEAN NOT NULL DEFAULT FALSE,
-    FOREIGN KEY (task_category_id) REFERENCES task_category(task_category_id) ON DELETE CASCADE,
-    FOREIGN KEY (cid_id) REFERENCES cid(cid_id) ON DELETE CASCADE,
-    FOREIGN KEY (assignee_id) REFERENCES users(user_id) ON DELETE SET NULL,
-    FOREIGN KEY (task_approver_id) REFERENCES users(user_id) ON DELETE SET NULL,
-    UNIQUE(task_category_id, cid_id)
-);
-------------------------------------------
+import pool from "../config/database.js";
 
--- 🚀 Function to update `approval_date` when status is "complete" or "cancel" ✅
-CREATE OR REPLACE FUNCTION task_update_approval_date()
-RETURNS TRIGGER AS $$
-BEGIN
-    IF NEW.status = 'complete' OR NEW.status = 'cancel' THEN
-        NEW.approval_date = CURRENT_TIMESTAMP;
-    ELSE
-        NEW.approval_date = NULL;  -- ✅ Ensure it resets to NULL if status is changed back
-    END IF;
-    RETURN NEW;
-END;
-$$ LANGUAGE plpgsql;
+// Helper function to get user_id from username
+const getUserIdFromUsername = async (username) => {
+  const query = `SELECT * FROM users WHERE username = $1`;
+  const { rows } = await pool.query(query, [username]);
+  return rows[0]?.user_id;
+}
 
--- 🚀 Attach the trigger to update approval_date when needed ✅
-CREATE TRIGGER task_status_update
-BEFORE INSERT OR UPDATE ON cid_task
-FOR EACH ROW
-EXECUTE FUNCTION task_update_approval_date();
----------------------------------------------
+// Helper function to get task_category_id from task_name
+const getTaskCategoryIdFromTaskName = async (taskName) => {
+  const query = `SELECT * FROM task_category WHERE task_name = $1`;
+  const { rows } = await pool.query(query, [taskName]);
+  return rows[0]?.task_category_id;
+}
 
--- 🚀 Function to check and update overdue status dynamically ✅
-CREATE OR REPLACE FUNCTION task_check_overdue_status()
-RETURNS TRIGGER AS $$
-BEGIN
-    -- ✅ If the deadline has passed and status is "in-progress" (ONLY IN-PROGRESS!), set status to "overdue"
-    IF NEW.deadline IS NOT NULL AND NEW.deadline < NOW() AND NEW.status = 'in-progress' THEN
-        NEW.status = 'overdue';
-    END IF;
+// ✅ Create a new CID task (Admin Only)
+export const createCIDTask = async (taskData) => {
 
-    -- ✅ If the deadline is changed to a future date and the status is "overdue", reset to "in-progress"
-    IF NEW.deadline IS NOT NULL AND NEW.deadline > NOW() AND OLD.status = 'overdue' THEN
-        NEW.status = 'in-progress';
-    END IF;
+  // convert assignee_name to assignee_id
+  const assignee_id = await getUserIdFromUsername(taskData.assignee_name);
+  if(!assignee_id) {
+    throw new Error(`The assignee name : ${taskData.assignee_name} not found`);
+  }
+  // convert approver_name to approver_id
+  const task_approver_id = await getUserIdFromUsername(taskData.approver_name);
+  if(!task_approver_id) {
+    throw new Error(`The approver name : ${taskData.approver_name} not found`);
+  }
+  // convert task_name to task_category_id
+  const task_category_id = await getTaskCategoryIdFromTaskName(taskData.task_name);
+  if(!task_category_id) {
+    throw new Error(`Task name : ${taskData.task_name} not found`);
+  }
 
-    RETURN NEW;
-END;
-$$ LANGUAGE plpgsql;
+  const query = `INSERT INTO cid_task (task_category_id, cid_id, status, assignee_id, deadline, task_approver_id)
+                  VALUES ($1, $2, COALESCE($3, 'in-progress'), $4, $5, $6) RETURNING *`;
+  const values = [
+    task_category_id,
+    taskData.cid_id,
+    taskData.status,
+    assignee_id,
+    taskData.deadline,
+    task_approver_id,
+  ];
+  const { rows } = await pool.query(query, values);
+  return rows[0];
+};
 
--- 🚀 Attach the trigger to check for overdue status dynamically ✅
-CREATE TRIGGER cid_task_overdue_check
-BEFORE UPDATE OR INSERT ON cid_task
-FOR EACH ROW
-EXECUTE FUNCTION task_check_overdue_status();
+// ✅ Get all CID tasks (Users can see all)
+export const getAllCIDTasks = async () => {
+  const query = `
+    SELECT ct.*, s.status_name, u.username, tc.task_name, c.cid_id 
+    FROM cid_task ct
+    JOIN users u ON ct.user_id = u.user_id
+    JOIN task_category tc ON ct.task_category_id = tc.task_category_id
+    JOIN cid c ON ct.cid_id = c.cid_id
+    ORDER BY ct.cid_task_id ASC`;
+
+  const { rows } = await pool.query(query);
+  return rows;
+};
+
+// // ✅ Get a CID task by ID
+// export const getCIDTaskById = async (cidTaskId) => {
+//   const query = "SELECT * FROM cid_task WHERE cid_task_id = $1";
+//   const { rows } = await pool.query(query, [cidTaskId]);
+//   return rows[0];
+// };
+
+// // ✅ Update a CID task (Admin Only)
+// export const updateCIDTask = async (cidTaskId, updatedFields) => {
+//   const fields = Object.keys(updatedFields)
+//     .map((key, index) => `${key} = $${index + 1}`)
+//     .join(", ");
+//   const values = Object.values(updatedFields);
+
+//   const query = `UPDATE cid_task SET ${fields} WHERE cid_task_id = $${values.length + 1} RETURNING *`;
+
+//   const { rows } = await pool.query(query, [...values, cidTaskId]);
+//   return rows[0];
+// };
+
+
+// // ✅ Delete a CID task (Admin Only)
+// export const deleteCIDTask = async (cidTaskId) => {
+//   const query = "DELETE FROM cid_task WHERE cid_task_id = $1 RETURNING *";
+//   const { rows } = await pool.query(query, [cidTaskId]);
+//   return rows[0];
+// };
+
+
+// // ✅ Update only the status (User Permission by answering question)
+// export const updateCIDTaskStatus = async (cidTaskId, statusId, userId) => {
+//     const query = `
+//       UPDATE cid_task 
+//       SET status_id = $1 
+//       WHERE cid_task_id = $2 AND user_id = $3
+//       RETURNING *`;
+  
+//     const { rows } = await pool.query(query, [statusId, cidTaskId, userId]);
+//     return rows[0];
+//   };
+
+
+// // ✅ Approve or Reject Task (Updates `approval_date` and `task_approver_id`)
+// export const updateCIDTaskApproval = async (cidTaskId, statusId, approverId) => {
+//     const query = `
+//       UPDATE cid_task 
+//       SET status_id = $1, approval_date = CURRENT_TIMESTAMP, task_approver_id = $2 
+//       WHERE cid_task_id = $3
+//       RETURNING *`;
+  
+//     const { rows } = await pool.query(query, [statusId, approverId, cidTaskId]);
+//     return rows[0];
+//   };
+
+
+//   // ✅ Get CID tasks assigned to a specific user
+// export const getCIDTasksByUser = async (userId) => {
+//     const query = `
+//       SELECT ct.*, s.status_name, u.username, tc.task_name, c.cid_id 
+//       FROM cid_task ct
+//       JOIN status s ON ct.status_id = s.status_id
+//       JOIN users u ON ct.user_id = u.user_id
+//       JOIN task_category tc ON ct.task_category_id = tc.task_category_id
+//       JOIN cid c ON ct.cid_id = c.cid_id
+//       WHERE ct.user_id = $1
+//       ORDER BY ct.cid_task_id ASC`;
+  
+//     const { rows } = await pool.query(query, [userId]);
+//     return rows;
+//   };
+
+// // ✅ Get all CID tasks for a specific CID
+// export const getCIDTasksByCID = async (cid_id) => {
+//     const query = `
+//       SELECT ct.*, s.status_name, u.username, tc.task_name
+//       FROM cid_task ct
+//       JOIN status s ON ct.status_id = s.status_id
+//       JOIN users u ON ct.user_id = u.user_id
+//       JOIN task_category tc ON ct.task_category_id = tc.task_category_id
+//       WHERE ct.cid_id = $1
+//       ORDER BY ct.cid_task_id ASC`;
+  
+//     const { rows } = await pool.query(query, [cid_id]);
+//     return rows;
+//   };
