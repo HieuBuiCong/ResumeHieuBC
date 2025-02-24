@@ -1,54 +1,148 @@
-const permissions = {
-    admin: [
-        "create_user", "update_user", "delete_user", "view_users", "view_user",
-        "view_departments", "create_department", "delete_department",
-        "view_products", "view_products", "create_product", "update_product", "delete_product",
-        "view_task_categories", "create_task_category", "update_task_category", "delete_task_category",
-        "create_cid", "update_cid", "delete_cid", "manage_cid",
-        "create_task_category_question",
-        "create_task",
-    ],
-    user: [
-        "view_departments",
-        "view_products",
-        "view_task_categories",
-    ],
+import {
+  createCIDTask,
+  getAllCIDTasks,
+  getCIDTaskById,
+  updateCIDTask,
+  deleteCIDTask,
+  updateCIDTaskStatus,
+  updateCIDTaskApproval,
+  getCIDTasksByUser,
+  getCIDTasksByCID,
+} from "../models/cidTaskModel.js";
+
+// ✅ Create a new CID task (Admin Only)
+export const createTask = async (req, res) => {
+  try {
+    const taskData = req.body;
+    const newTask = await createCIDTask(taskData);
+    res.status(201).json({ success: true, message: "Task created successfully", data: newTask });
+  } catch (error) {
+    res.status(400).json({ success: false, message: error.message });
+  }
 };
 
-export default permissions;
+// ✅ Get all CID tasks (Users can see all)
+export const getAllTasks = async (req, res) => {
+  try {
+    const tasks = await getAllCIDTasks();
+    res.status(200).json({ success: true, data: tasks });
+  } catch (error) {
+    res.status(500).json({ success: false, message: "Error retrieving tasks", error: error.message });
+  }
+};
 
---------------
-import express from "express";
-import {
-  //getCIDTasks,
-  //getCIDTask,
-  addCIDTask,
-  //editCIDTask,
-  //editCIDTaskStatus,
-  //removeCIDTask
-} from "../controllers/cid_task.controller.js";
+// ✅ Get a CID task by ID
+export const getTaskById = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const task = await getCIDTaskById(id);
+    if (!task) return res.status(404).json({ success: false, message: "Task not found" });
+    res.status(200).json({ success: true, data: task });
+  } catch (error) {
+    res.status(500).json({ success: false, message: "Error retrieving task", error: error.message });
+  }
+};
 
-import authMiddleware from "../middleware/auth.middleware.js";
-import roleMiddleware from "../middleware/role.middleware.js";
+// ✅ Update a CID task (Admin Only)
+export const updateTask = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const updatedFields = req.body;
+    const updatedTask = await updateCIDTask(id, updatedFields);
+    if (!updatedTask) return res.status(404).json({ success: false, message: "Task not found" });
+    res.status(200).json({ success: true, message: "Task updated successfully", data: updatedTask });
+  } catch (error) {
+    res.status(400).json({ success: false, message: error.message });
+  }
+};
 
-const router = express.Router();
+// ✅ Delete a CID task (Admin Only)
+export const deleteTask = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const deletedTask = await deleteCIDTask(id);
+    if (!deletedTask) return res.status(404).json({ success: false, message: "Task not found" });
+    res.status(200).json({ success: true, message: "Task deleted successfully" });
+  } catch (error) {
+    res.status(500).json({ success: false, message: "Error deleting task", error: error.message });
+  }
+};
 
-// ✅ Admin Controls
+// ✅ Submit Task (Users can only submit their assigned tasks)
+export const submitTask = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const userId = req.user.user_id; // Get logged-in user ID
+    const userRole = req.user.role; // Get user role
 
-    // ✅ Admin creates CID task and assigned user gets notified
-router.post("/", authMiddleware, roleMiddleware("create_task"), addCIDTask);
-router.put("/:id", authMiddleware, roleMiddleware("update_task"), editCIDTask);
-router.delete("/:id", authMiddleware, roleMiddleware("delete_task"), removeCIDTask);
+    // ✅ Fetch the task
+    const task = await getCIDTaskById(id);
+    if (!task) {
+      return res.status(404).json({ success: false, message: "Task not found" });
+    }
 
-    // ✅ Admin approves/rejects task
-router.post("/review", authMiddleware, roleMiddleware("approve_task"), reviewCIDTask);
+    // 🚨 Check if the user is the assigned user or Admin
+    if (userRole !== "admin" && task.assignee_id !== userId) {
+      return res.status(403).json({ success: false, message: "Unauthorized. Only the assigned user can submit this task." });
+    }
 
-// ✅ User can see all tasks, but can only submit their assigned tasks
-router.get("/", authMiddleware, getCIDTasks);
+    // ✅ Update task status to "submitted"
+    const updatedTask = await updateCIDTaskStatus(id, "submitted");
 
-// ✅ User can submit their assign tasks; Admins can submit for any user
-router.post("/submit", authMiddleware, roleMiddleware("update_status"), submitCIDTask);
+    res.status(200).json({
+      success: true,
+      message: "Task submitted successfully",
+      data: updatedTask,
+    });
 
-export default router;
+  } catch (error) {
+    res.status(400).json({ success: false, message: error.message });
+  }
+};
 
+// ✅ Approve or Reject Task (Admin Only)
+export const approveOrRejectTask = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { status } = req.body;
+    const approverId = req.user.user_id; // Get logged-in admin ID
 
+    // ✅ Fetch the task to check if it exists
+    const task = await getCIDTaskById(id);
+    if (!task) return res.status(404).json({ success: false, message: "Task not found" });
+
+    // ✅ Update task with approval status
+    const updatedTask = await updateCIDTaskApproval(id, status, approverId);
+    
+    res.status(200).json({
+      success: true,
+      message: "Task approved/rejected successfully",
+      data: updatedTask,
+    });
+
+  } catch (error) {
+    res.status(400).json({ success: false, message: error.message });
+  }
+};
+
+// ✅ Get tasks assigned to a specific user
+export const getTasksByUser = async (req, res) => {
+  try {
+    const { userId } = req.params;
+    const tasks = await getCIDTasksByUser(userId);
+    res.status(200).json({ success: true, data: tasks });
+  } catch (error) {
+    res.status(500).json({ success: false, message: "Error retrieving tasks", error: error.message });
+  }
+};
+
+// ✅ Get tasks for a specific CID
+export const getTasksByCID = async (req, res) => {
+  try {
+    const { cid_id } = req.params;
+    const tasks = await getCIDTasksByCID(cid_id);
+    res.status(200).json({ success: true, data: tasks });
+  } catch (error) {
+    res.status(500).json({ success: false, message: "Error retrieving tasks", error: error.message });
+  }
+};
