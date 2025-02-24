@@ -44,7 +44,7 @@ BEGIN
         IF (SELECT status FROM cid_task WHERE cid_task_id = NEW.dependency_cid_id) IN ('complete', 'cancel')
            AND NEW.status NOT IN ('complete', 'submitted', 'cancel') THEN
             NEW.status = 'in-progress';
-            NEW.deadline = (SELECT deadline FROM cid_task WHERE cid_task_id = NEW.dependency_cid_id) + NEW.dependency_date;
+            NEW.deadline = (SELECT approval_date FROM cid_task WHERE cid_task_id = NEW.dependency_cid_id) + NEW.dependency_date;
         END IF;
     END IF;
 
