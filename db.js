@@ -1,47 +1,53 @@
-import pool from "../config/database.js";
-import cron from "node-cron";
+import express from "express";
+import dotenv from "dotenv";
+import cors from "cors";
+import helmet from "helmet";
+import cookieParser from "cookie-parser";
+import authRoutes from "./routes/auth.routes.js";
+import userRoutes from "./routes/user.routes.js";
 
-/**
- * ✅ Scheduled Job: Automatically update tasks from "in-progress" to "overdue" when deadline passes.
- * ✅ Runs every 5 minutes (adjust as needed).
- */
-const checkOverdueTasks = async () => {
-    try {
-        console.log("🔄 Checking for overdue tasks...");
+import departmentRoutes from "./routes/department.routes.js";
+import productRoutes from "./routes/product.routes.js";
+import taskCategoryRoutes from "./routes/task_category.routes.js";
+import cidRoutes from "./routes/cid.routes.js";
+import cidTaskRoutes from "./routes/cid_task.routes.js";
+import taskCategoryQuestionRoutes from "./routes/task_category_question.routes.js";
+import pool from "./config/database.js";
 
-        // ✅ Find all "in-progress" tasks where deadline has passed
-        const { rows: overdueTasks } = await pool.query(`
-            SELECT cid_task_id FROM cid_task
-            WHERE status = 'in-progress' 
-            AND deadline < NOW()
-        `);
+import "./utils/taskOverdueWatchDog.js";
 
-        if (overdueTasks.length === 0) {
-            console.log("✅ No overdue tasks found.");
-            return;
-        }
+// ✅ Load environment variables
+dotenv.config();
 
-        // ✅ Update each overdue task to "overdue"
-        const taskIds = overdueTasks.map(task => task.cid_task_id);
-        await pool.query(`
-            UPDATE cid_task 
-            SET status = 'overdue' 
-            WHERE cid_task_id = ANY($1)
-        `, [taskIds]);
 
-        console.log(`⚠️ Updated ${overdueTasks.length} tasks to "overdue".`);
-    } catch (error) {
-        console.error("❌ Error checking overdue tasks:", error);
-    }
-};
+const app = express();
 
-// ✅ Schedule this function to run every 5 minutes
-cron.schedule("*/5 * * * *", async () => {
-    await checkOverdueTasks();
-}, {
-    scheduled: true,
-    timezone: "Asia/Ho_Chi_Minh" // ✅ Ensures Hanoi timezone consistency
+// ✅ Middleware
+app.use(express.json()); // Parse JSON bodies
+app.use(cookieParser()); // Parse cookies
+app.use(cors({ origin: process.env.CLIENT_URL, credentials: true })); // Allow frontend requests
+app.use(helmet()); // Secure headers
+
+// ✅ Database Connection Check
+pool.connect()
+  .then(() => console.log("✅ Database Connected Successfully"))
+  .catch(err => console.error("❌ Database Connection Error:", err));
+
+// ✅ API Routes
+app.use("/api/auth", authRoutes);
+app.use("/api/users", userRoutes);
+app.use("/api/departments", departmentRoutes);
+app.use("/api/products", productRoutes);
+app.use("/api/task_categories", taskCategoryRoutes);
+app.use("/api/cids", cidRoutes);
+app.use("/api/cid_tasks", cidTaskRoutes);
+app.use("/api/task_category_questions", taskCategoryQuestionRoutes);
+
+// ✅ Default Route
+app.get("/", (req, res) => {
+  res.status(200).json({ message: "🚀 API is running!" });
 });
 
-// ✅ Export the function for manual execution if needed
-export default checkOverdueTasks;
+// ✅ Start Server
+const PORT = process.env.PORT || 5000;
+app.listen(PORT, () => console.log(`🚀 Server running on port ${PORT}`));
