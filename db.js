@@ -1,77 +1,97 @@
-{
-    "success": true,
-    "data": [
-        {
-            "cid_task_id": 1,
-            "task_category_id": 1,
-            "cid_id": 1,
-            "status": "overdue",
-            "assignee_id": 3,
-            "deadline": "2024-01-09T17:00:00.000Z",
-            "created_date": "2025-02-24T08:54:09.914Z",
-            "task_approver_id": 1,
-            "submitted_date": "2025-02-25T04:36:44.890Z",
-            "approval_date": null,
-            "send_email_to_leader": false,
-            "dependency_cid_id": null,
-            "dependency_date": null,
-            "task_name": "Measuring OTS",
-            "assignee_name": "DuyVanDang",
-            "approver_name": "admin"
-        },
-        {
-            "cid_task_id": 3,
-            "task_category_id": 5,
-            "cid_id": 1,
-            "status": "submitted",
-            "assignee_id": 3,
-            "deadline": "2024-01-11T17:00:00.000Z",
-            "created_date": "2025-02-24T13:58:45.390Z",
-            "task_approver_id": null,
-            "submitted_date": "2025-02-25T02:42:23.472Z",
-            "approval_date": null,
-            "send_email_to_leader": false,
-            "dependency_cid_id": null,
-            "dependency_date": null,
-            "task_name": "Check and update ECS",
-            "assignee_name": "DuyVanDang",
-            "approver_name": null
-        },
-        {
-            "cid_task_id": 4,
-            "task_category_id": 6,
-            "cid_id": 1,
-            "status": "complete",
-            "assignee_id": 10,
-            "deadline": "2025-09-11T17:00:00.000Z",
-            "created_date": "2025-02-24T15:05:05.338Z",
-            "task_approver_id": 1,
-            "submitted_date": "2025-02-24T15:21:05.136Z",
-            "approval_date": "2025-02-25T06:36:59.419Z",
-            "send_email_to_leader": false,
-            "dependency_cid_id": null,
-            "dependency_date": null,
-            "task_name": "Approve OTS result",
-            "assignee_name": "TungOngNgoc",
-            "approver_name": "admin"
-        },
-        {
-            "cid_task_id": 5,
-            "task_category_id": 6,
-            "cid_id": 4,
-            "status": "in-progress",
-            "assignee_id": 10,
-            "deadline": "2025-02-28T06:17:30.367Z",
-            "created_date": "2025-02-24T17:20:55.125Z",
-            "task_approver_id": 1,
-            "submitted_date": "2025-02-25T04:14:22.822Z",
-            "approval_date": "2025-02-25T06:14:16.942Z",
-            "send_email_to_leader": false,
-            "dependency_cid_id": 1,
-            "dependency_date": {
-                "days": 3
-            },
-            "task_name": "Approve OTS result",
-            "assignee_name": "TungOngNgoc",
-            "approver_name": "admin"
-        },
+import pool from "../config/database.js";
+
+/**
+ * ✅ Updates task status correctly based on dependencies.
+ * ✅ Ensures dependent tasks are "pending" if their parent task is not complete.
+ */
+export const updateTaskStatusLogic = async (taskId, newStatus = null, approverId = null) => {
+    try {
+        // Fetch task details
+        const { rows } = await pool.query("SELECT * FROM cid_task WHERE cid_task_id = $1", [taskId]);
+        if (rows.length === 0) {
+            throw new Error(`Task with ID ${taskId} not found.`);
+        }
+
+        const task = rows[0];
+        let status = newStatus || task.status;
+        let approvalDate = task.approval_date;
+        let submittedDate = task.submitted_date;
+
+        // ✅ If status is "submitted", update submitted_date
+        if (status === "submitted") {
+            submittedDate = new Date(); // Automatically stores in UTC
+        }
+
+        // ✅ If status is "complete" or "cancel", update approval_date
+        if (["complete", "cancel"].includes(status)) {
+            approvalDate = new Date(); // Automatically stores in UTC
+        } else {
+            approvalDate = null; // Reset approval date if status changes back
+        }
+
+        // ✅ If deadline has passed and task is still "in-progress", mark as "overdue"
+        if (task.deadline && new Date(task.deadline) < new Date() && status === "in-progress") {
+            status = "overdue";
+        }
+
+        // ✅ If the deadline is extended and task was "overdue", reset to "in-progress"
+        if (task.deadline && new Date(task.deadline) > new Date() && task.status === "overdue") {
+            status = "in-progress";
+        }
+
+        // 🚨 **FIX: Dependent Tasks Should Not Be "In-Progress" If Parent is Not Completed**
+        if (["overdue", "in-progress", "pending"].includes(status)) {
+            await pool.query(`
+                UPDATE cid_task 
+                SET status = 'pending'
+                WHERE dependency_cid_id = $1
+                AND status NOT IN ('complete', 'submitted', 'cancel')
+            `, [taskId]);
+        }
+
+        // ✅ If the current task is "complete", update dependent tasks
+        if (status === "complete") {
+            await pool.query(`
+                UPDATE cid_task 
+                SET deadline = ( ($1::TIMESTAMP AT TIME ZONE 'UTC') + dependency_date ) AT TIME ZONE 'Asia/Ho_Chi_Minh'
+                WHERE dependency_cid_id = $2
+                AND status NOT IN ('complete', 'submitted', 'cancel')
+            `, [approvalDate, taskId]);
+
+            await pool.query(`
+                UPDATE cid_task 
+                SET status = 'in-progress'
+                WHERE dependency_cid_id = $1
+                AND status NOT IN ('complete', 'submitted', 'cancel')
+                AND deadline IS NOT NULL AND deadline > NOW()
+            `, [taskId]);
+
+            await pool.query(`
+                UPDATE cid_task 
+                SET status = 'overdue'
+                WHERE dependency_cid_id = $1
+                AND status NOT IN ('complete', 'submitted', 'cancel')
+                AND deadline IS NOT NULL AND deadline < NOW()
+            `, [taskId]);
+        }
+
+        // ✅ Update the main task in the database
+        const updatedTask = await pool.query(`
+            UPDATE cid_task
+            SET status = $1, 
+                approval_date = $2,
+                submitted_date = $3
+            WHERE cid_task_id = $4
+            RETURNING *,
+                approval_date AT TIME ZONE 'Asia/Ho_Chi_Minh' AS local_approval_date,
+                submitted_date AT TIME ZONE 'Asia/Ho_Chi_Minh' AS local_submitted_date,
+                deadline AT TIME ZONE 'Asia/Ho_Chi_Minh' AS local_deadline
+        `, [status, approvalDate, submittedDate, taskId]);
+
+        return updatedTask.rows[0];
+
+    } catch (error) {
+        console.error("Error updating task status logic:", error);
+        throw error;
+    }
+};
