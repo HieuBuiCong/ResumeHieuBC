@@ -1,154 +1,85 @@
-import {
-  createCIDTask,
-  getAllCIDTasks,
-  getCIDTaskById,
-  updateCIDTask,
-  deleteCIDTask,
-  updateCIDTaskStatus,
-  updateCIDTaskApproval,
-  getCIDTasksByUser,
-  getCIDTasksByCID,
-} from "../models/cid_task.model.js";
+import pool from "../config/database.js";
 
-// ✅ Create a new CID task (Admin Only)
-export const createTask = async (req, res) => {
-  try {
-    const taskData = req.body;
-    const newTask = await createCIDTask(taskData);
-    res.status(201).json({ success: true, message: "Task created successfully", data: newTask });
-  } catch (error) {
-    res.status(400).json({ success: false, message: error.message });
-  }
-};
+/**
+ * ✅ Updates task status based on logic previously in PostgreSQL trigger
+ */
+export const updateTaskStatusLogic = async (taskId) => {
+    try {
+        // 1️⃣ Get the task details
+        const { rows } = await pool.query("SELECT * FROM cid_task WHERE cid_task_id = $1", [taskId]);
+        if (rows.length === 0) {
+            throw new Error(`Task with ID ${taskId} not found.`);
+        }
 
-// ✅ Get all CID tasks (Users can see all)
-export const getAllTasks = async (req, res) => {
-  try {
-    const tasks = await getAllCIDTasks();
-    res.status(200).json({ success: true, data: tasks });
-  } catch (error) {
-    res.status(500).json({ success: false, message: "Error retrieving tasks", error: error.message });
-  }
-};
+        const task = rows[0];
+        let newStatus = task.status;
+        let approvalDate = task.approval_date;
 
-// ✅ Get a CID task by ID
-export const getTaskById = async (req, res) => {
-  try {
-    const { id } = req.params;
-    const task = await getCIDTaskById(id);
-    if (!task) return res.status(404).json({ success: false, message: "Task not found" });
-    res.status(200).json({ success: true, data: task });
-  } catch (error) {
-    res.status(500).json({ success: false, message: "Error retrieving task", error: error.message });
-  }
-};
+        // 2️⃣ If status is "complete" or "cancel", set approval_date
+        if (["complete", "cancel"].includes(newStatus)) {
+            approvalDate = new Date();
+        } else {
+            approvalDate = null; // Reset approval date if changed back
+        }
 
-// ✅ Update a CID task (Admin Only)
-export const updateTask = async (req, res) => {
-  try {
-    const { id } = req.params;
-    const updatedFields = req.body;
-    const updatedTask = await updateCIDTask(id, updatedFields);
-    if (!updatedTask) return res.status(404).json({ success: false, message: "Task not found" });
-    res.status(200).json({ success: true, message: "Task updated successfully", data: updatedTask });
-  } catch (error) {
-    res.status(400).json({ success: false, message: error.message });
-  }
-};
+        // 3️⃣ If the deadline has passed and status is "in-progress", mark as "overdue"
+        if (task.deadline && new Date(task.deadline) < new Date() && newStatus === "in-progress") {
+            newStatus = "overdue";
+        }
 
-// ✅ Delete a CID task (Admin Only)
-export const deleteTask = async (req, res) => {
-  try {
-    const { id } = req.params;
-    const deletedTask = await deleteCIDTask(id);
-    if (!deletedTask) return res.status(404).json({ success: false, message: "Task not found" });
-    res.status(200).json({ success: true, message: "Task deleted successfully" });
-  } catch (error) {
-    res.status(500).json({ success: false, message: "Error deleting task", error: error.message });
-  }
-};
+        // 4️⃣ If the deadline is extended and the task was "overdue", reset to "in-progress"
+        if (task.deadline && new Date(task.deadline) > new Date() && task.status === "overdue") {
+            newStatus = "in-progress";
+        }
 
-// ✅ Submit Task (Users can only submit their assigned tasks)
-export const submitTask = async (req, res) => {
-  try {
-    const { id } = req.params;
-    const userId = req.user.id; // Get logged-in user ID
+        // 5️⃣ If the current task is not "complete" or "cancel", force dependent tasks to "pending"
+        if (!["complete", "cancel"].includes(newStatus)) {
+            await pool.query(`
+                UPDATE cid_task
+                SET status = 'pending'
+                WHERE dependency_cid_id = $1
+                AND status NOT IN ('complete', 'submitted', 'cancel')
+            `, [taskId]);
+        }
 
-    const userRoleId = parseInt(req.user.role, 10); // Get user role
-    console.log("User data from JWT:", req.user);
+        // 6️⃣ If the task is "complete" or "cancel", update dependent tasks
+        if (["complete", "cancel"].includes(newStatus)) {
+            await pool.query(`
+                UPDATE cid_task
+                SET deadline = ($1 + dependency_date)
+                WHERE dependency_cid_id = $2
+                AND status NOT IN ('complete', 'submitted', 'cancel')
+            `, [approvalDate, taskId]);
 
-    const taskId = parseInt(id, 10);
+            await pool.query(`
+                UPDATE cid_task
+                SET status = 'in-progress'
+                WHERE dependency_cid_id = $1
+                AND status NOT IN ('complete', 'submitted', 'cancel')
+                AND deadline IS NOT NULL AND deadline > NOW()
+            `, [taskId]);
 
-    // ✅ Fetch the task
-    const task = await getCIDTaskById(id);
-    if (!task) {
-      return res.status(404).json({ success: false, message: "Task not found" });
+            await pool.query(`
+                UPDATE cid_task
+                SET status = 'overdue'
+                WHERE dependency_cid_id = $1
+                AND status NOT IN ('complete', 'submitted', 'cancel')
+                AND deadline IS NOT NULL AND deadline < NOW()
+            `, [taskId]);
+        }
+
+        // ✅ Update the task status and approval_date
+        const updatedTask = await pool.query(`
+            UPDATE cid_task
+            SET status = $1, approval_date = $2
+            WHERE cid_task_id = $3
+            RETURNING *
+        `, [newStatus, approvalDate, taskId]);
+
+        return updatedTask.rows[0];
+
+    } catch (error) {
+        console.error("Error updating task status logic:", error);
+        throw error;
     }
-
-    // 🚨 Check if the user is the assigned user or Admin
-    if (userRoleId !== 1 && task.assignee_id !== userId) {
-      console.log(userRoleId, task.assignee_id, userId );
-      return res.status(403).json({ success: false, message: "Unauthorized. Only the assigned user can submit this task." });
-    }
-
-    // ✅ Update task status to "submitted"
-    const updatedTask = await updateCIDTaskStatus(taskId, "submitted");
-
-    res.status(200).json({
-      success: true,
-      message: "Task submitted successfully",
-      data: updatedTask,
-    });
-
-  } catch (error) {
-    res.status(400).json({ success: false, message: error.message });
-  }
-};
-
-// ✅ Approve or Reject Task (Admin Only)
-export const approveOrRejectTask = async (req, res) => {
-  try {
-    const { id } = req.params;
-    const { decision } = req.body;
-    const approverId = req.user.id; // Get logged-in admin ID
-    const newStatus = decision === "reject" ? "in-progress" : decision === "approve" ? "complete" : "cancel";
-
-    // ✅ Fetch the task to check if it exists
-    const task = await getCIDTaskById(id);
-    if (!task) return res.status(404).json({ success: false, message: "Task not found" });
-
-    // ✅ Update task with approval status
-    const updatedTask = await updateCIDTaskApproval(id, newStatus, approverId);
-    
-    res.status(200).json({
-      success: true,
-      message: "Task approved/rejected successfully",
-      data: updatedTask,
-    });
-
-  } catch (error) {
-    res.status(400).json({ success: false, message: error.message });
-  }
-};
-
-// ✅ Get tasks assigned to a specific user
-export const getTasksByUser = async (req, res) => {
-  try {
-    const { userId } = req.params;
-    const tasks = await getCIDTasksByUser(userId);
-    res.status(200).json({ success: true, data: tasks });
-  } catch (error) {
-    res.status(500).json({ success: false, message: "Error retrieving tasks", error: error.message });
-  }
-};
-
-// ✅ Get tasks for a specific CID
-export const getTasksByCID = async (req, res) => {
-  try {
-    const { cid_id } = req.params;
-    const tasks = await getCIDTasksByCID(cid_id);
-    res.status(200).json({ success: true, data: tasks });
-  } catch (error) {
-    res.status(500).json({ success: false, message: "Error retrieving tasks", error: error.message });
-  }
 };
