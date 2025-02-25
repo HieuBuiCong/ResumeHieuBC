@@ -1,64 +1,154 @@
-CREATE OR REPLACE FUNCTION manage_task_status_updates()
-RETURNS TRIGGER AS $$
-BEGIN
-    -- 🚀 1️⃣ If status is "complete" or "cancel", update approval_date
-    IF NEW.status = 'complete' OR NEW.status = 'cancel' THEN
-        NEW.approval_date = CURRENT_TIMESTAMP;
-    ELSE
-        NEW.approval_date = NULL;  -- ✅ Reset approval_date if status is changed back
-    END IF;
+import {
+  createCIDTask,
+  getAllCIDTasks,
+  getCIDTaskById,
+  updateCIDTask,
+  deleteCIDTask,
+  updateCIDTaskStatus,
+  updateCIDTaskApproval,
+  getCIDTasksByUser,
+  getCIDTasksByCID,
+} from "../models/cid_task.model.js";
 
-    -- -- 🚀 2️⃣ If status is "submitted", update submitted_date
-    -- UpdateCIDTaskStatus function in cid_task.model.js
+// ✅ Create a new CID task (Admin Only)
+export const createTask = async (req, res) => {
+  try {
+    const taskData = req.body;
+    const newTask = await createCIDTask(taskData);
+    res.status(201).json({ success: true, message: "Task created successfully", data: newTask });
+  } catch (error) {
+    res.status(400).json({ success: false, message: error.message });
+  }
+};
 
-    -- 🚀 3️⃣ If the deadline has passed and status is "in-progress", set status to "overdue"
-    IF NEW.deadline IS NOT NULL AND NEW.deadline < NOW() AND NEW.status = 'in-progress' THEN
-        NEW.status = 'overdue';
-    END IF;
+// ✅ Get all CID tasks (Users can see all)
+export const getAllTasks = async (req, res) => {
+  try {
+    const tasks = await getAllCIDTasks();
+    res.status(200).json({ success: true, data: tasks });
+  } catch (error) {
+    res.status(500).json({ success: false, message: "Error retrieving tasks", error: error.message });
+  }
+};
 
-    -- ✅ If the deadline is extended and the task was "overdue", reset it back to "in-progress"
-    IF NEW.deadline IS NOT NULL AND NEW.deadline > NOW() AND OLD.status = 'overdue' THEN
-        NEW.status = 'in-progress';
-    END IF;
+// ✅ Get a CID task by ID
+export const getTaskById = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const task = await getCIDTaskById(id);
+    if (!task) return res.status(404).json({ success: false, message: "Task not found" });
+    res.status(200).json({ success: true, data: task });
+  } catch (error) {
+    res.status(500).json({ success: false, message: "Error retrieving task", error: error.message });
+  }
+};
 
-    -- 🚀 4️⃣ **Explicitly Force Dependent Tasks to "Pending"**
-    -- ✅ If the current task is not complete or cancel, update all dependent tasks that are NOT "complete", "submitted", or "cancel"
-    IF NEW.status NOT IN ('complete', 'cancel') THEN
-        UPDATE cid_task 
-        SET status = 'pending'
-        WHERE dependency_cid_id = NEW.cid_task_id 
-        AND status NOT IN ('complete', 'submitted', 'cancel');
-    END IF;
+// ✅ Update a CID task (Admin Only)
+export const updateTask = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const updatedFields = req.body;
+    const updatedTask = await updateCIDTask(id, updatedFields);
+    if (!updatedTask) return res.status(404).json({ success: false, message: "Task not found" });
+    res.status(200).json({ success: true, message: "Task updated successfully", data: updatedTask });
+  } catch (error) {
+    res.status(400).json({ success: false, message: error.message });
+  }
+};
 
-    -- ✅ If the dependenting task is "complete" or "cancel", update dependent task to "in-progress" or "overdue"
-    -- ✅ Only apply this update if the dependent task is NOT already "complete", "submitted", or "cancel"
-    IF NEW.status IN ('complete', 'cancel') THEN
-        -- 🚀 Set deadline.
-        UPDATE cid_task 
-        SET deadline = (NEW.approval_date + dependency_date) 
-        WHERE dependency_cid_id = NEW.cid_task_id
-        AND status NOT IN ('complete', 'submitted', 'cancel');  -- 🚀 Prevents updates to completed/submitted tasks
-        -- 🚀 Set status = in-progress.
-        UPDATE cid_task 
-        SET status = 'in-progress' 
-        WHERE dependency_cid_id = NEW.cid_task_id
-        AND status NOT IN ('complete', 'submitted', 'cancel')  
-        AND deadline IS NOT NULL AND deadline > NOW(); -- 🚀 deadline is not due.
-        -- 🚀 Set status = overdue.
-        UPDATE cid_task 
-        SET status = 'overdue' 
-        WHERE dependency_cid_id = NEW.cid_task_id
-        AND status NOT IN ('complete', 'submitted', 'cancel')  
-        AND deadline IS NOT NULL AND deadline < NOW(); -- 🚀 deadline is due.
-    END IF;
+// ✅ Delete a CID task (Admin Only)
+export const deleteTask = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const deletedTask = await deleteCIDTask(id);
+    if (!deletedTask) return res.status(404).json({ success: false, message: "Task not found" });
+    res.status(200).json({ success: true, message: "Task deleted successfully" });
+  } catch (error) {
+    res.status(500).json({ success: false, message: "Error deleting task", error: error.message });
+  }
+};
 
-    RETURN NEW;
-END;
-$$ LANGUAGE plpgsql;
+// ✅ Submit Task (Users can only submit their assigned tasks)
+export const submitTask = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const userId = req.user.id; // Get logged-in user ID
 
--- 🚀 Attach the trigger to handle ALL logic in one place
-DROP TRIGGER IF EXISTS unified_task_status_trigger ON cid_task;
-CREATE TRIGGER unified_task_status_trigger
-AFTER INSERT OR UPDATE ON cid_task
-FOR EACH ROW
-EXECUTE FUNCTION manage_task_status_updates();
+    const userRoleId = parseInt(req.user.role, 10); // Get user role
+    console.log("User data from JWT:", req.user);
+
+    const taskId = parseInt(id, 10);
+
+    // ✅ Fetch the task
+    const task = await getCIDTaskById(id);
+    if (!task) {
+      return res.status(404).json({ success: false, message: "Task not found" });
+    }
+
+    // 🚨 Check if the user is the assigned user or Admin
+    if (userRoleId !== 1 && task.assignee_id !== userId) {
+      console.log(userRoleId, task.assignee_id, userId );
+      return res.status(403).json({ success: false, message: "Unauthorized. Only the assigned user can submit this task." });
+    }
+
+    // ✅ Update task status to "submitted"
+    const updatedTask = await updateCIDTaskStatus(taskId, "submitted");
+
+    res.status(200).json({
+      success: true,
+      message: "Task submitted successfully",
+      data: updatedTask,
+    });
+
+  } catch (error) {
+    res.status(400).json({ success: false, message: error.message });
+  }
+};
+
+// ✅ Approve or Reject Task (Admin Only)
+export const approveOrRejectTask = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { decision } = req.body;
+    const approverId = req.user.id; // Get logged-in admin ID
+    const newStatus = decision === "reject" ? "in-progress" : decision === "approve" ? "complete" : "cancel";
+
+    // ✅ Fetch the task to check if it exists
+    const task = await getCIDTaskById(id);
+    if (!task) return res.status(404).json({ success: false, message: "Task not found" });
+
+    // ✅ Update task with approval status
+    const updatedTask = await updateCIDTaskApproval(id, newStatus, approverId);
+    
+    res.status(200).json({
+      success: true,
+      message: "Task approved/rejected successfully",
+      data: updatedTask,
+    });
+
+  } catch (error) {
+    res.status(400).json({ success: false, message: error.message });
+  }
+};
+
+// ✅ Get tasks assigned to a specific user
+export const getTasksByUser = async (req, res) => {
+  try {
+    const { userId } = req.params;
+    const tasks = await getCIDTasksByUser(userId);
+    res.status(200).json({ success: true, data: tasks });
+  } catch (error) {
+    res.status(500).json({ success: false, message: "Error retrieving tasks", error: error.message });
+  }
+};
+
+// ✅ Get tasks for a specific CID
+export const getTasksByCID = async (req, res) => {
+  try {
+    const { cid_id } = req.params;
+    const tasks = await getCIDTasksByCID(cid_id);
+    res.status(200).json({ success: true, data: tasks });
+  } catch (error) {
+    res.status(500).json({ success: false, message: "Error retrieving tasks", error: error.message });
+  }
+};
