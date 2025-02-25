@@ -1,54 +1,36 @@
-CREATE OR REPLACE FUNCTION manage_task_status_updates()
-RETURNS TRIGGER AS $$
-BEGIN
-    -- 🚀 1️⃣ If status is "complete" or "cancel", update approval_date
-    IF NEW.status = 'complete' OR NEW.status = 'cancel' THEN
-        NEW.approval_date = CURRENT_TIMESTAMP;
-    ELSE
-        NEW.approval_date = NULL;  -- ✅ Reset approval_date if status is changed back
-    END IF;
+import express from "express";
+import {
+  getAllTasks,
+  getTaskById,
+  createTask,
+  updateTask,
+  deleteTask,
+  submitTask,
+  approveOrRejectTask,
+  getTasksByUser,
+  getTasksByCID
+} from "../controllers/cid_task.controller.js";
 
-    -- 🚀 2️⃣ If status is "submitted", update submitted_date
-    IF NEW.status = 'submitted' THEN
-        NEW.submitted_date = CURRENT_TIMESTAMP;
-    END IF;
+import authMiddleware from "../middleware/auth.middleware.js";
+import roleMiddleware from "../middleware/role.middleware.js";
 
-    -- 🚀 3️⃣ If the deadline has passed and status is "in-progress", set status to "overdue"
-    IF NEW.deadline IS NOT NULL AND NEW.deadline < NOW() AND NEW.status = 'in-progress' THEN
-        NEW.status = 'overdue';
-    END IF;
+const router = express.Router();
 
-    -- ✅ If the deadline is extended and the task was "overdue", reset it back to "in-progress"
-    IF NEW.deadline IS NOT NULL AND NEW.deadline > NOW() AND OLD.status = 'overdue' THEN
-        NEW.status = 'in-progress';
-    END IF;
+// ✅ Admin Routes (Only Admins can create, update, delete, approve tasks)
+router.post("/", authMiddleware, roleMiddleware("create_task"), createTask); // Create Task ✅
+router.put("/:id", authMiddleware, roleMiddleware("update_task"), updateTask); // Update Task
+router.delete("/:id", authMiddleware, roleMiddleware("delete_task"), deleteTask); // Delete Task
+router.put("/:id/approve", authMiddleware, roleMiddleware("approve_task"), approveOrRejectTask); // Approve/Reject Task ✅
 
-    -- 🚀 4️⃣ **Explicitly Force Dependent Tasks to "Pending"**
-    -- ✅ If the current task is "overdue", update all dependent tasks that are NOT "complete", "submitted", or "cancel"
-    IF NEW.status = 'overdue' THEN
-        UPDATE cid_task 
-        SET status = 'pending'
-        WHERE dependency_cid_id = NEW.cid_task_id 
-        AND status NOT IN ('complete', 'submitted', 'cancel');
-    END IF;
+// ✅ Public Routes (Users & Admins can see tasks)
+router.get("/", authMiddleware, getAllTasks); // Get All Tasks ✅
+router.get("/:id", authMiddleware, getTaskById); // Get Task by ID ✅
 
-    -- ✅ If the dependenting task is "complete" or "cancel", update dependent task to "in-progress"
-    -- ✅ Only apply this update if the dependent task is NOT already "complete", "submitted", or "cancel"
-    IF NEW.status IN ('complete', 'cancel') THEN
-        UPDATE cid_task 
-        SET status = 'in-progress', 
-            deadline = (NEW.deadline + dependency_date)
-        WHERE dependency_cid_id = NEW.cid_task_id
-        AND status NOT IN ('complete', 'submitted', 'cancel');  -- 🚀 Prevents updates to completed/submitted tasks
-    END IF;
+// ✅ User Route (Users can only submit their own assigned tasks; Admins can submit for anyone)
+router.put("/:id/submit", authMiddleware, roleMiddleware("update_status"), submitTask);
 
-    RETURN NEW;
-END;
-$$ LANGUAGE plpgsql;
+// ✅ Get Tasks by User or CID
+router.get("/user/:userId", authMiddleware, getTasksByUser); // Get Tasks Assigned to a Specific User ✅
+router.get("/cid/:cid_id", authMiddleware, getTasksByCID); // Get All Tasks for a Specific CID ✅
 
--- 🚀 Attach the trigger to handle ALL logic in one place
-DROP TRIGGER IF EXISTS unified_task_status_trigger ON cid_task;
-CREATE TRIGGER unified_task_status_trigger
-AFTER UPDATE ON cid_task
-FOR EACH ROW
-EXECUTE FUNCTION manage_task_status_updates();
+export default router;
