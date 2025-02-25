@@ -1,97 +1,47 @@
 import pool from "../config/database.js";
+import cron from "node-cron";
 
 /**
- * ✅ Updates task status correctly based on dependencies.
- * ✅ Ensures dependent tasks are "pending" if their parent task is not complete.
+ * ✅ Scheduled Job: Automatically update tasks from "in-progress" to "overdue" when deadline passes.
+ * ✅ Runs every 5 minutes (adjust as needed).
  */
-export const updateTaskStatusLogic = async (taskId, newStatus = null, approverId = null) => {
+const checkOverdueTasks = async () => {
     try {
-        // Fetch task details
-        const { rows } = await pool.query("SELECT * FROM cid_task WHERE cid_task_id = $1", [taskId]);
-        if (rows.length === 0) {
-            throw new Error(`Task with ID ${taskId} not found.`);
+        console.log("🔄 Checking for overdue tasks...");
+
+        // ✅ Find all "in-progress" tasks where deadline has passed
+        const { rows: overdueTasks } = await pool.query(`
+            SELECT cid_task_id FROM cid_task
+            WHERE status = 'in-progress' 
+            AND deadline < NOW()
+        `);
+
+        if (overdueTasks.length === 0) {
+            console.log("✅ No overdue tasks found.");
+            return;
         }
 
-        const task = rows[0];
-        let status = newStatus || task.status;
-        let approvalDate = task.approval_date;
-        let submittedDate = task.submitted_date;
+        // ✅ Update each overdue task to "overdue"
+        const taskIds = overdueTasks.map(task => task.cid_task_id);
+        await pool.query(`
+            UPDATE cid_task 
+            SET status = 'overdue' 
+            WHERE cid_task_id = ANY($1)
+        `, [taskIds]);
 
-        // ✅ If status is "submitted", update submitted_date
-        if (status === "submitted") {
-            submittedDate = new Date(); // Automatically stores in UTC
-        }
-
-        // ✅ If status is "complete" or "cancel", update approval_date
-        if (["complete", "cancel"].includes(status)) {
-            approvalDate = new Date(); // Automatically stores in UTC
-        } else {
-            approvalDate = null; // Reset approval date if status changes back
-        }
-
-        // ✅ If deadline has passed and task is still "in-progress", mark as "overdue"
-        if (task.deadline && new Date(task.deadline) < new Date() && status === "in-progress") {
-            status = "overdue";
-        }
-
-        // ✅ If the deadline is extended and task was "overdue", reset to "in-progress"
-        if (task.deadline && new Date(task.deadline) > new Date() && task.status === "overdue") {
-            status = "in-progress";
-        }
-
-        // 🚨 **FIX: Dependent Tasks Should Not Be "In-Progress" If Parent is Not Completed**
-        if (["overdue", "in-progress", "pending"].includes(status)) {
-            await pool.query(`
-                UPDATE cid_task 
-                SET status = 'pending'
-                WHERE dependency_cid_id = $1
-                AND status NOT IN ('complete', 'submitted', 'cancel')
-            `, [taskId]);
-        }
-
-        // ✅ If the current task is "complete", update dependent tasks
-        if (status === "complete") {
-            await pool.query(`
-                UPDATE cid_task 
-                SET deadline = ( ($1::TIMESTAMP AT TIME ZONE 'UTC') + dependency_date ) AT TIME ZONE 'Asia/Ho_Chi_Minh'
-                WHERE dependency_cid_id = $2
-                AND status NOT IN ('complete', 'submitted', 'cancel')
-            `, [approvalDate, taskId]);
-
-            await pool.query(`
-                UPDATE cid_task 
-                SET status = 'in-progress'
-                WHERE dependency_cid_id = $1
-                AND status NOT IN ('complete', 'submitted', 'cancel')
-                AND deadline IS NOT NULL AND deadline > NOW()
-            `, [taskId]);
-
-            await pool.query(`
-                UPDATE cid_task 
-                SET status = 'overdue'
-                WHERE dependency_cid_id = $1
-                AND status NOT IN ('complete', 'submitted', 'cancel')
-                AND deadline IS NOT NULL AND deadline < NOW()
-            `, [taskId]);
-        }
-
-        // ✅ Update the main task in the database
-        const updatedTask = await pool.query(`
-            UPDATE cid_task
-            SET status = $1, 
-                approval_date = $2,
-                submitted_date = $3
-            WHERE cid_task_id = $4
-            RETURNING *,
-                approval_date AT TIME ZONE 'Asia/Ho_Chi_Minh' AS local_approval_date,
-                submitted_date AT TIME ZONE 'Asia/Ho_Chi_Minh' AS local_submitted_date,
-                deadline AT TIME ZONE 'Asia/Ho_Chi_Minh' AS local_deadline
-        `, [status, approvalDate, submittedDate, taskId]);
-
-        return updatedTask.rows[0];
-
+        console.log(`⚠️ Updated ${overdueTasks.length} tasks to "overdue".`);
     } catch (error) {
-        console.error("Error updating task status logic:", error);
-        throw error;
+        console.error("❌ Error checking overdue tasks:", error);
     }
 };
+
+// ✅ Schedule this function to run every 5 minutes
+cron.schedule("*/5 * * * *", async () => {
+    await checkOverdueTasks();
+}, {
+    scheduled: true,
+    timezone: "Asia/Ho_Chi_Minh" // ✅ Ensures Hanoi timezone consistency
+});
+
+// ✅ Export the function for manual execution if needed
+export default checkOverdueTasks;
