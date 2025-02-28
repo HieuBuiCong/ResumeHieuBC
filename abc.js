@@ -1,82 +1,170 @@
-import pool from "../config/database.js";
+-- task_category_question_answer
+CREATE TABLE IF NOT EXISTS task_category_question_answer (
+  task_category_question_answer_id SERIAL PRIMARY KEY,
+  task_category_question_id        INT NOT NULL REFERENCES task_category_question(task_category_question_id),
+  cid_task_id                      INT NOT NULL REFERENCES cid_task(cid_task_id),
+  answer                           TEXT
+);
 
-// ✅ Function to get CID tasks with filters (including date range filters)
-export const getFilteredCIDTasks = async (filters) => {
-  let query = `
-    SELECT 
-      ct.*, 
-      tc.task_name, 
-      c.cid_id,  
-      u1.username AS assignee_name, 
-      u2.username AS approver_name 
-    FROM cid_task ct
-    JOIN users u1 ON ct.assignee_id = u1.user_id
-    LEFT JOIN users u2 ON ct.task_approver_id = u2.user_id
-    JOIN task_category tc ON ct.task_category_id = tc.task_category_id
-    JOIN cid c ON ct.cid_id = c.cid_id
-    WHERE 1=1`;
 
-  const values = [];
-  let index = 1;
+----------------------------------------------------------------------------
 
-  // ✅ Apply filters dynamically
-  if (filters.status) {
-    query += ` AND ct.status = $${index++}`;
-    values.push(filters.status);
-  }
+import pool from "../db.js"; // or wherever your PG pool is
 
-  if (filters.assignee_name) {
-    query += ` AND u1.username ILIKE $${index++}`;
-    values.push(`%${filters.assignee_name}%`);
-  }
-
-  if (filters.task_name) {
-    query += ` AND tc.task_name ILIKE $${index++}`;
-    values.push(`%${filters.task_name}%`);
-  }
-
-  if (filters.cid_id) {
-    query += ` AND ct.cid_id = $${index++}`;
-    values.push(filters.cid_id);
-  }
-
-  if (filters.part_number) {
-    query += ` AND ct.part_number ILIKE $${index++}`;
-    values.push(`%${filters.part_number}%`);
-  }
-
-  // ✅ Date range filters (submitted_date, create_date, approval_date, deadline)
-  const dateFilters = [
-    { field: "submitted_date", start: "submitted_start", end: "submitted_end" },
-    { field: "create_date", start: "created_start", end: "created_end" },
-    { field: "approval_date", start: "approval_start", end: "approval_end" },
-    { field: "deadline", start: "deadline_start", end: "deadline_end" },
-  ];
-
-  dateFilters.forEach(({ field, start, end }) => {
-    if (filters[start] && filters[end]) {
-      query += ` AND ct.${field} BETWEEN $${index++} AND $${index++}`;
-      values.push(filters[start], filters[end]);
-    }
-  });
-
-  query += " ORDER BY ct.cid_task_id ASC";
-
-  const { rows } = await pool.query(query, values);
-  return rows;
-};
--------------------------------------------------------------------------------------------------------
-------------------------------------------------------------------------------------------------------
-// ✅ Get all CID tasks with optional filters (including date range filters)
-export const getFilteredTasks = async (req, res) => {
+/**
+ * Insert blank answers for all questions in a given category
+ * when a new cid_task is created.
+ */
+export const insertBlankAnswersForTask = async (categoryId, cidTaskId) => {
+  const client = await pool.connect();
   try {
-    const filters = req.query; // Extract filters from query parameters
-    const tasks = await getFilteredCIDTasks(filters);
+    await client.query("BEGIN");
 
-    res.status(200).json({ success: true, data: tasks });
+    // 1) Get all question IDs for this category
+    const getQuestionsQuery = `
+      SELECT task_category_question_id
+      FROM task_category_question
+      WHERE task_category_id = $1
+    `;
+    const { rows: questions } = await client.query(getQuestionsQuery, [categoryId]);
+
+    // 2) Insert one row per question with answer = NULL
+    if (questions.length > 0) {
+      const insertAnswersQuery = `
+        INSERT INTO task_category_question_answer (task_category_question_id, cid_task_id, answer)
+        VALUES ($1, $2, NULL)
+      `;
+      for (const q of questions) {
+        await client.query(insertAnswersQuery, [q.task_category_question_id, cidTaskId]);
+      }
+    }
+
+    await client.query("COMMIT");
+    return true;
   } catch (error) {
-    res.status(500).json({ success: false, message: "Error retrieving tasks", error: error.message });
+    await client.query("ROLLBACK");
+    throw error;
+  } finally {
+    client.release();
   }
 };
---------------------------------------------------
-router.get("/", authMiddleware, getFilteredTasks);
+
+/**
+ * Update the answers in task_category_question_answer based on user’s submission.
+ * `answers` is expected to be an array of objects: [ { questionId, answer }, ... ]
+ */
+export const updateAnswersForTask = async (cidTaskId, answers = []) => {
+  const client = await pool.connect();
+  try {
+    await client.query("BEGIN");
+
+    const updateQuery = `
+      UPDATE task_category_question_answer
+      SET answer = $1
+      WHERE cid_task_id = $2
+        AND task_category_question_id = $3
+    `;
+
+    for (const { questionId, answer } of answers) {
+      await client.query(updateQuery, [answer, cidTaskId, questionId]);
+    }
+
+    await client.query("COMMIT");
+    return true;
+  } catch (error) {
+    await client.query("ROLLBACK");
+    throw error;
+  } finally {
+    client.release();
+  }
+};
+--------------------------------------------
+import {
+  createCIDTask,
+  // ...
+} from "../models/cid_task.model.js";
+
+import {
+  insertBlankAnswersForTask,
+  // Possibly import updateAnswersForTask if you want to do it here
+} from "../models/taskCategoryQuestionAnswer.model.js";
+
+export const createTask = async (req, res) => {
+  try {
+    const taskData = req.body;
+    // 1) Create the cid_task row
+    const newTask = await createCIDTask(taskData);
+
+    // newTask should include newTask.cid_task_id and newTask.task_category_id
+    // Insert blank answers for each question in that category
+    await insertBlankAnswersForTask(
+      newTask.task_category_id,
+      newTask.cid_task_id
+    );
+
+    return res
+      .status(201)
+      .json({
+        success: true,
+        message: "Task created successfully",
+        data: newTask
+      });
+  } catch (error) {
+    return res
+      .status(400)
+      .json({
+        success: false,
+        message: error.message
+      });
+  }
+};
+----------------------------------
+import { updateAnswersForTask } from "../models/taskCategoryQuestionAnswer.model.js";
+// ... other imports
+
+export const submitTask = async (req, res) => {
+  try {
+    const { id } = req.params;  // This is the cid_task_id
+    const userId = req.user.id; // Logged-in user ID
+    const userRoleId = parseInt(req.user.role, 10); // user role
+
+    const { answers } = req.body; 
+    // Expecting 'answers' as an array of objects like:
+    // [ { questionId: 1, answer: "Lorem ipsum" }, { questionId: 2, answer: "..." } ]
+
+    const task = await getCIDTaskById(id);
+    if (!task) {
+      return res.status(404).json({
+        success: false,
+        message: "Task not found"
+      });
+    }
+
+    // 🚨 Ensure this user is the assignee or an Admin
+    if (userRoleId !== 1 && task.assignee_id !== userId) {
+      return res.status(403).json({
+        success: false,
+        message: "Unauthorized. Only the assigned user can submit this task."
+      });
+    }
+
+    // 1) Update the answers (if any were provided)
+    if (Array.isArray(answers) && answers.length > 0) {
+      await updateAnswersForTask(id, answers);
+    }
+
+    // 2) Mark the task as "submitted"
+    const updatedTask = await updateTaskStatusLogic(id, "submitted");
+
+    return res.status(200).json({
+      success: true,
+      message: "Task submitted successfully",
+      data: updatedTask,
+    });
+  } catch (error) {
+    return res.status(400).json({
+      success: false,
+      message: error.message
+    });
+  }
+};
