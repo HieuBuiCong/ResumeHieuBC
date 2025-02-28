@@ -1,20 +1,3 @@
-/**
- * ✅ Get all questions for a given task category
- */
-export const getQuestionsByCategory = async (categoryId) => {
-  const query = `
-    SELECT task_category_question_id
-    FROM task_category_question
-    WHERE task_category_id = $1
-  `;
-  const { rows } = await pool.query(query, [categoryId]);
-  return rows; // Returns an array of questions
-};
-
--------------------------------------------------
-/**
- * ✅ Submit Task (Users must provide answers only if there are questions)
- */
 export const submitTask = async (req, res) => {
   try {
     const { id } = req.params; // `cid_task_id`
