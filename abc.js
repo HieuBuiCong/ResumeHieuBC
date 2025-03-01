@@ -1,30 +1,107 @@
-import nodemailer from 'nodemailer';
-import config from '../config/dotenv.config.js';
+import pool from "../config/database.js";
+import { sendEmail } from "./emailUtils.js";
 
-// Configure the transporter
-const transporter = nodemailer.createTransport({
-host: 'smartrelay.hitachienergy.com',  // SMTP relay hostname
-    port: 587,  // TLS Port (Use 465 for SSL)
-    secure: false, // Use `true` for port 465 (SSL), `false` for port 587 (TLS)
-    auth: {
-        user: config.smtp.user, // Your Hitachi Energy email
-        pass: config.smtp.password, // Your email password or app-specific password
-    },
-    tls: {
-        rejectUnauthorized: false // Allows untrusted certificates (if needed)
-    }
-});
-
-export const sendEmail = async (to, subject, content, isHtml = false) => {
+/**
+ * ✅ Send an email notification with full task details when answers are submitted.
+ * @param {number} cidTaskId - The ID of the submitted task.
+ */
+export const sendAnswerSubmissionNotification = async (cidTaskId) => {
   try {
-    await transporter.sendMail({
-      from: process.env.EMAIL_USER,
-      to,
-      subject,
-      [isHtml ? "html" : "text"]: content // Sends as HTML if isHtml is true
-    });
-    console.log(`📧 Email sent to: ${to}`);
+    // 🔹 1) Fetch Task, CID, and Product Details
+    const taskQuery = `
+      SELECT 
+        ct.cid_task_id, 
+        ct.task_category_id, 
+        tc.task_name, 
+        ct.status, 
+        ct.part_number, 
+        p.part_name, 
+        c.cid_id, 
+        c.prev_rev, 
+        c.next_rev,
+        ct.task_approver_id
+      FROM cid_task ct
+      JOIN task_category tc ON ct.task_category_id = tc.task_category_id
+      JOIN cid c ON ct.cid_id = c.cid_id
+      LEFT JOIN product p ON ct.part_number = p.part_number
+      WHERE ct.cid_task_id = $1
+    `;
+    const { rows: taskRows } = await pool.query(taskQuery, [cidTaskId]);
+    
+    if (taskRows.length === 0) {
+      console.error(`❌ No task found with ID: ${cidTaskId}`);
+      return;
+    }
+    const taskDetails = taskRows[0];
+
+    // 🔹 2) Get Submitted Questions & Answers
+    const qaQuery = `
+      SELECT 
+        q.question_name, 
+        a.answer
+      FROM task_category_question_answer a
+      JOIN task_category_question q 
+        ON a.task_category_question_id = q.task_category_question_id
+      WHERE a.cid_task_id = $1
+    `;
+    const { rows: qaRows } = await pool.query(qaQuery, [cidTaskId]);
+
+    // 🔹 3) Get Admins' & Approver's Emails
+    const userQuery = `
+      SELECT email 
+      FROM users 
+      WHERE role_id = 1 OR user_id = $1
+    `;
+    const { rows: users } = await pool.query(userQuery, [taskDetails.task_approver_id]);
+
+    const recipients = users.map(user => user.email);
+    if (recipients.length === 0) {
+      console.error("❌ No recipients found for answer submission notification.");
+      return;
+    }
+
+    // 🔹 4) Format Email Content
+    const answersHtml = qaRows.length
+      ? qaRows.map(q => `<p><strong>${q.question_name}:</strong> ${q.answer || "No Answer"}</p>`).join("")
+      : "<p>No answers submitted.</p>";
+
+    const subject = `📩 Task #${taskDetails.cid_task_id} - Answers Submitted`;
+
+    const content = `
+      <p>Hello,</p>
+      <p>The assigned user has submitted answers for <strong>Task #${taskDetails.cid_task_id} - ${taskDetails.task_name}</strong>.</p>
+
+      <h3>🔹 Task Details:</h3>
+      <ul>
+        <li><strong>Task ID:</strong> ${taskDetails.cid_task_id}</li>
+        <li><strong>Task Name:</strong> ${taskDetails.task_name}</li>
+        <li><strong>Status:</strong> ${taskDetails.status}</li>
+      </ul>
+
+      <h3>🔹 Product Details:</h3>
+      <ul>
+        <li><strong>Part Number:</strong> ${taskDetails.part_number || "N/A"}</li>
+        <li><strong>Part Name:</strong> ${taskDetails.part_name || "N/A"}</li>
+      </ul>
+
+      <h3>🔹 CID Details:</h3>
+      <ul>
+        <li><strong>CID ID:</strong> ${taskDetails.cid_id}</li>
+        <li><strong>Previous Revision:</strong> ${taskDetails.prev_rev}</li>
+        <li><strong>Next Revision:</strong> ${taskDetails.next_rev}</li>
+      </ul>
+
+      <h3>🔹 Submitted Answers:</h3>
+      ${answersHtml}
+
+      <p>Please review the task in the system.</p>
+      <p>Best regards,<br>Your System</p>
+    `;
+
+    // 🔹 5) Send Email
+    await sendEmail(recipients.join(","), subject, content, true);
+    console.log(`📧 Notification sent for Task #${cidTaskId} to:`, recipients);
   } catch (error) {
-    console.error("❌ Error sending email:", error);
+    console.error("❌ Error sending answer submission email:", error);
   }
 };
