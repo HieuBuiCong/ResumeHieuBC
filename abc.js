@@ -1,98 +1,97 @@
-import {
-  createCID,
-  getAllCIDs,
-  getCIDById,
-  updateCID,
-  deleteCID,
-  checkOverdueCIDs
-} from "../models/cid.model.js";
+import pool from "../config/database.js";
 
-// ✅ Get all CID entries
-export const getCIDs = async (req, res) => {
-  try {
-    const cids = await getAllCIDs();
-    res.status(200).json(cids);
-  } catch (error) {
-    res.status(500).json({ error: error.message });
-  }
-};
+/**
+ * ✅ Updates task status correctly based on dependencies.
+ * ✅ Ensures dependent tasks are "pending" if their parent task is not complete.
+ */
+export const updateTaskStatusLogic = async (taskId, newStatus = null, approverId = null) => {
+    try {
+        // Fetch task details
+        const { rows } = await pool.query("SELECT * FROM cid_task WHERE cid_task_id = $1", [taskId]);
+        if (rows.length === 0) {
+            throw new Error(`Task with ID ${taskId} not found.`);
+        }
 
-// ✅ Get a single CID by ID
-export const getCID = async (req, res) => {
-  try {
-    const cid = await getCIDById(req.params.id);
-    if (!cid) {
-      return res.status(404).json({ message: "CID not found" });
+        const task = rows[0];
+        let status = newStatus || task.status;
+        let approvalDate = task.approval_date;
+        let submittedDate = task.submitted_date;
+
+        // ✅ If status is "submitted", update submitted_date
+        if (status === "submitted") {
+            submittedDate = new Date(); // Automatically stores in UTC
+        }
+
+        // ✅ If status is "complete" or "cancel", update approval_date
+        if (["complete", "cancel"].includes(status)) {
+            approvalDate = new Date(); // Automatically stores in UTC
+        } else {
+            approvalDate = null; // Reset approval date if status changes back
+        }
+
+        // ✅ If deadline has passed and task is still "in-progress", mark as "overdue"
+        if (task.deadline && new Date(task.deadline) < new Date() && status === "in-progress") {
+            status = "overdue";
+        }
+
+        // ✅ If the deadline is extended and task was "overdue", reset to "in-progress"
+        if (task.deadline && new Date(task.deadline) > new Date() && task.status === "overdue") {
+            status = "in-progress";
+        }
+
+        // 🚨 **FIX: Dependent Tasks Should Not Be "In-Progress" If Parent is Not Completed**
+        if (["overdue", "in-progress", "pending", "submitted"].includes(status)) {
+            await pool.query(`
+                UPDATE cid_task 
+                SET status = 'pending'
+                WHERE dependency_cid_id = $1
+                AND status NOT IN ('complete', 'submitted', 'cancel')
+            `, [taskId]);
+        }
+
+        // ✅ If the current task is "complete", update dependent tasks deadline of mother deadline + dependency_date and status of "in-progress"
+        if (["complete", "cancel"].includes(status)) {
+            await pool.query(`
+                UPDATE cid_task 
+                SET deadline = ( ($1::TIMESTAMP AT TIME ZONE 'UTC') + dependency_date ) AT TIME ZONE 'Asia/Ho_Chi_Minh'
+                WHERE dependency_cid_id = $2
+                AND status NOT IN ('complete', 'submitted', 'cancel')
+            `, [approvalDate, taskId]);
+
+            await pool.query(`
+                UPDATE cid_task 
+                SET status = 'in-progress'
+                WHERE dependency_cid_id = $1
+                AND status NOT IN ('complete', 'submitted', 'cancel')
+                AND deadline IS NOT NULL AND deadline > NOW()
+            `, [taskId]);
+
+            await pool.query(`
+                UPDATE cid_task 
+                SET status = 'overdue'
+                WHERE dependency_cid_id = $1
+                AND status NOT IN ('complete', 'submitted', 'cancel')
+                AND deadline IS NOT NULL AND deadline < NOW()
+            `, [taskId]);
+        }
+
+        // ✅ Update the main task in the database
+        const updatedTask = await pool.query(`
+            UPDATE cid_task
+            SET status = $1, 
+                approval_date = $2,
+                submitted_date = $3
+            WHERE cid_task_id = $4
+            RETURNING *,
+                approval_date AT TIME ZONE 'Asia/Ho_Chi_Minh' AS local_approval_date,
+                submitted_date AT TIME ZONE 'Asia/Ho_Chi_Minh' AS local_submitted_date,
+                deadline AT TIME ZONE 'Asia/Ho_Chi_Minh' AS local_deadline
+        `, [status, approvalDate, submittedDate, taskId]);
+
+        return updatedTask.rows[0];
+
+    } catch (error) {
+        console.error("Error updating task status logic:", error);
+        throw error;
     }
-    res.status(200).json(cid);
-  } catch (error) {
-    res.status(500).json({ error: error.message });
-  }
-};
-
-// ✅ Create a new CID entry using part_number
-export const addCID = async (req, res) => {
-  try {
-    const { part_number, next_rev } = req.body;
-
-    // Validate required fields
-    if (!part_number || !next_rev) {
-      return res.status(400).json({
-        message: "Part number, next revision are required"
-      });
-    }
-
-    const cid = await createCID(req.body);
-    res.status(201).json({
-      message: "CID created successfully",
-      cid
-    });
-  } catch (error) {
-    res.status(400).json({ error: error.message });
-  }
-};
-
-// ✅ Update a CID entry using part_number if provided
-export const editCID = async (req, res) => {
-  try {
-    const updatedCID = await updateCID(req.params.id, req.body);
-    if (!updatedCID) {
-      return res.status(404).json({ message: "CID not found" });
-    }
-    res.status(200).json({
-      message: "CID updated successfully",
-      updatedCID
-    });
-  } catch (error) {
-    res.status(400).json({ error: error.message });
-  }
-};
-
-// ✅ Delete a CID entry
-export const removeCID = async (req, res) => {
-  try {
-    const deletedCID = await deleteCID(req.params.id);
-    if (!deletedCID) {
-      return res.status(404).json({ message: "CID not found" });
-    }
-    res.status(200).json({
-      message: "CID deleted successfully",
-      deletedCID
-    });
-  } catch (error) {
-    res.status(500).json({ error: error.message });
-  }
-};
-
-// ✅ Endpoint to manually trigger overdue checks (optional)
-export const triggerOverdueCheck = async (req, res) => {
-  try {
-    const overdueCIDs = await checkOverdueCIDs();
-    res.status(200).json({
-      message: "Overdue check completed successfully",
-      overdueCIDs
-    });
-  } catch (error) {
-    res.status(500).json({ error: error.message });
-  }
 };
