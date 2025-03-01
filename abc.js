@@ -14,16 +14,17 @@ export const sendAnswerSubmissionNotification = async (cidTaskId) => {
         ct.task_category_id, 
         tc.task_name, 
         ct.status, 
-        ct.part_number, 
-        p.part_name, 
         c.cid_id, 
         c.prev_rev, 
-        c.next_rev,
+        c.next_rev, 
+        p.product_id,
+        p.part_number, 
+        p.part_name,
         ct.task_approver_id
       FROM cid_task ct
       JOIN task_category tc ON ct.task_category_id = tc.task_category_id
       JOIN cid c ON ct.cid_id = c.cid_id
-      LEFT JOIN product p ON ct.part_number = p.part_number
+      LEFT JOIN product p ON c.product_id = p.product_id
       WHERE ct.cid_task_id = $1
     `;
     const { rows: taskRows } = await pool.query(taskQuery, [cidTaskId]);
@@ -80,6 +81,7 @@ export const sendAnswerSubmissionNotification = async (cidTaskId) => {
 
       <h3>🔹 Product Details:</h3>
       <ul>
+        <li><strong>Product ID:</strong> ${taskDetails.product_id || "N/A"}</li>
         <li><strong>Part Number:</strong> ${taskDetails.part_number || "N/A"}</li>
         <li><strong>Part Name:</strong> ${taskDetails.part_name || "N/A"}</li>
       </ul>
