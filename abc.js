@@ -1,27 +1,14 @@
-import { Routes, Route, Navigate } from 'react-router-dom';
-import AuthPage from '../pages/AuthPage';
-import DashboardPage from '../pages/DashboardPage';
-import CIDManagementPage from '../pages/CIDManagementPage';
-import NotFoundPage from '../pages/NotFoundPage';
-import ProtectedRoute from '../components/Common/ProtectedRoute';
+import React, { useContext } from 'react';
+import { Navigate, Outlet } from 'react-router-dom';
+import { AuthContext } from '../../context/AuthContext';
+import Loader from './Loader';
 
-const AppRoutes = () => (
-  <Routes>
-    {/* Default route redirects to dashboard */}
-    <Route path="/" element={<Navigate to="/dashboard" />} />
-    
-    {/* Public routes */}
-    <Route path="/login" element={<AuthPage />} />
+const ProtectedRoute = () => {
+  const { isAuthenticated, loading } = useContext(AuthContext);
 
-    {/* Protected routes (Only accessible if authenticated) */}
-    <Route element={<ProtectedRoute />}>
-      <Route path="/dashboard" element={<DashboardPage />} />
-      <Route path="/cid-management" element={<CIDManagementPage />} />
-    </Route>
+  if (loading) return <Loader />;  // Show a loader while checking auth
 
-    {/* 404 Not Found Page */}
-    <Route path="*" element={<NotFoundPage />} />
-  </Routes>
-);
+  return isAuthenticated ? <Outlet /> : <Navigate to="/login" />;
+};
 
-export default AppRoutes;
+export default ProtectedRoute;
