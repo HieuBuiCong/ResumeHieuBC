@@ -1,29 +1,27 @@
-import nodemailer from "nodemailer";
+import jwt from "jsonwebtoken";
+import config from "../config/dotenv.config.js"; // Load environment variables
 
-// Configure the transporter
-const transporter = nodemailer.createTransport({
-host: 'smartrelay.hitachienergy.com',  // SMTP relay hostname
-    port: 587,  // TLS Port (Use 465 for SSL)
-    secure: false, // Use `true` for port 465 (SSL), `false` for port 587 (TLS)
-    auth: {
-        user: 'your-email@hitachienergy.com', // Your Hitachi Energy email
-        pass: 'your-email-password' // Your email password or app-specific password
-    },
-    tls: {
-        rejectUnauthorized: false // Allows untrusted certificates (if needed)
-    }
-});
+const authMiddleware = (req, res, next) => {
+  // 1️⃣ Get the token from the cookies.
+  const token = req.cookies.token;
 
-export const sendEmail = async (to, subject, content, isHtml = false) => {
+  // 2️⃣ Check if token exists
+  if (!token) {
+    return res.status(401).json({ message: "Access Denied: No Token Provided" });
+  }
+
   try {
-    await transporter.sendMail({
-      from: process.env.EMAIL_USER,
-      to,
-      subject,
-      [isHtml ? "html" : "text"]: content // Sends as HTML if isHtml is true
-    });
-    console.log(`📧 Email sent to: ${to}`);
+    // 3️⃣ Verify the token
+    const decoded = jwt.verify(token, config.jwtSecret);
+
+    // 4️⃣ Attach user data to the request
+    req.user = decoded;
+
+    // 5️⃣ Move to the next middleware or route
+    next();
   } catch (error) {
-    console.error("❌ Error sending email:", error);
+    res.status(401).json({ message: "Invalid Token" });
   }
 };
+
+export default authMiddleware;
