@@ -1,40 +1,27 @@
-import express from "express";
-import {
-  getCIDs,
-  getCID,
-  addCID,
-  editCID,
-  removeCID,
-  triggerOverdueCheck, // Optional: Only if manually triggering overdue checks
-  sendCIDSummaryEmail, 
-} from "../controllers/cid.controller.js";
-import authMiddleware from "../middleware/auth.middleware.js";
-import roleMiddleware from "../middleware/role.middleware.js";
+import { Routes, Route, Navigate } from 'react-router-dom';
+import AuthPage from '../pages/AuthPage';
+import DashboardPage from '../pages/DashboardPage';
+import CIDManagementPage from '../pages/CIDManagementPage';
+import NotFoundPage from '../pages/NotFoundPage';
+import ProtectedRoute from '../components/Common/ProtectedRoute';
 
-const router = express.Router();
+const AppRoutes = () => (
+  <Routes>
+    {/* Default route redirects to dashboard */}
+    <Route path="/" element={<Navigate to="/dashboard" />} />
+    
+    {/* Public routes */}
+    <Route path="/login" element={<AuthPage />} />
 
-// ✅ Get all CIDs
-router.get("/", authMiddleware, getCIDs);
+    {/* Protected routes (Only accessible if authenticated) */}
+    <Route element={<ProtectedRoute />}>
+      <Route path="/dashboard" element={<DashboardPage />} />
+      <Route path="/cid-management" element={<CIDManagementPage />} />
+    </Route>
 
-// ✅ Get a specific CID by ID
-router.get("/:id", authMiddleware, getCID);
+    {/* 404 Not Found Page */}
+    <Route path="*" element={<NotFoundPage />} />
+  </Routes>
+);
 
-// ✅ Create a new CID (using part_number from frontend)
-router.post("/", authMiddleware, roleMiddleware("create_cid"), addCID);
-
-// ✅ Update a CID (using part_number if provided)
-router.put("/:id", authMiddleware, roleMiddleware("update_cid"), editCID);
-
-// ✅ Delete a CID
-router.delete("/:id", authMiddleware, roleMiddleware("delete_cid"), removeCID);
-
-// ✅ Send CID summary email (admin only)
-//router.post("/send-summary", authMiddleware, roleMiddleware("send_summary"), sendSpecificCIDSummaryEmail);
-
-// ✅ (Optional) Manually trigger overdue checks 
-router.post("/check-overdue", authMiddleware, roleMiddleware("manage_cid"), triggerOverdueCheck);
-
-// ✅ Send summary email 
-router.post("/:cid_id/send-cid_summary_email", authMiddleware, roleMiddleware("manage_cid"), sendCIDSummaryEmail);
-
-export default router;
+export default AppRoutes;
