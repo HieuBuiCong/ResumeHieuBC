@@ -1,14 +1,15 @@
-import React, { useContext } from 'react';
-import { Navigate, Outlet } from 'react-router-dom';
-import { AuthContext } from '../../context/AuthContext';
-import Loader from './Loader';
+import { BrowserRouter } from 'react-router-dom';
+import AppRoutes from './routes/AppRoutes';
+import AuthProvider from './context/AuthContext';
 
-const ProtectedRoute = () => {
-  const { isAuthenticated, loading } = useContext(AuthContext);
+function App() {
+  return (
+    <AuthProvider>
+      <BrowserRouter>
+        <AppRoutes />
+      </BrowserRouter>
+    </AuthProvider>
+  );
+}
 
-  if (loading) return <Loader />;  // Show a loader while checking auth
-
-  return isAuthenticated ? <Outlet /> : <Navigate to="/login" />;
-};
-
-export default ProtectedRoute;
+export default App;
