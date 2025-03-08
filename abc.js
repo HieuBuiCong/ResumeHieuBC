@@ -52,22 +52,21 @@ const LoginForm = () => {
 
       {/* Password Input with Show/Hide Feature */}
       <Form.Group className="mb-4">
+        <Form.Label>Password</Form.Label>
         <InputGroup>
-          <Input
+          <Form.Control
             type={showPassword ? "text" : "password"} // ✅ Toggle visibility
-            placeholder="Password"
+            placeholder="Enter password"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
             required
-            className="mb-0"
           />
-          <Button
-            type="button"
-            className="bg-gray-200 border border-gray-300 px-3 rounded-end"
+          <InputGroup.Text // ✅ Eye icon inside the field, on the right side
             onClick={() => setShowPassword(!showPassword)}
+            style={{ cursor: 'pointer', background: 'white', borderLeft: 'none' }}
           >
             {showPassword ? <FaEyeSlash /> : <FaEye />}
-          </Button>
+          </InputGroup.Text>
         </InputGroup>
       </Form.Group>
 
