@@ -8,6 +8,9 @@ import Error from '../Common/Error';
 import { Form, InputGroup } from 'react-bootstrap';
 import { FaEye, FaEyeSlash } from 'react-icons/fa';
 
+const cidLogo = "/assets/CIDLogo.png"; // ✅ Use absolute path for Vite 
+const companyLogo = "/assets/HitachiEnergyLogo.png";
+
 const LoginForm = () => {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
@@ -38,11 +41,8 @@ const LoginForm = () => {
   return (
     <div className="d-flex vh-50 justify-content-center align-items-center bg-light p-5 bg-white shadow-lg rounded-lg" style={{ width: '400px' }}>
       <div  style={{ width: '400px' }}>
-        <h2 className="text-center mb-3">Sign in</h2>
-        <p className="text-center">
-          Don’t have an account? <a href="mailto:admin@example.com" className="text-primary">Contact Admin</a>
-        </p>
-
+        <img src={companyLogo} />
+        <h2 className="text-center mb-3 pt-3">Sign in</h2>
         {error && <Error message={error} />}
 
         <Form onSubmit={handleSubmit}>
@@ -66,7 +66,7 @@ const LoginForm = () => {
               <a href="#" className="text-primary small">Forgot password?</a>
             </div>
             <InputGroup>
-              <Input
+              <Form.Control
                 type={showPassword ? "text" : "password"}
                 placeholder="Enter your password"
                 value={password}
@@ -86,7 +86,9 @@ const LoginForm = () => {
           <Button type="submit" disabled={loading} className="w-100 bg-dark text-white">
             {loading ? 'Signing in...' : 'Sign in'}
           </Button>
-
+          <p className="text-center pt-3">
+            Don’t have an account? <a href="mailto:hieu.bui-cong@hitachienergy.com; duy.van-dang1@hitachienergy.com" className="text-primary">Contact Admin</a>
+          </p>
         </Form>
       </div>
     </div>
