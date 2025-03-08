@@ -36,50 +36,60 @@ const LoginForm = () => {
   };
 
   return (
-    <form onSubmit={handleSubmit} className="max-w-md mx-auto p-6 bg-white shadow rounded-lg">
-      <h2 className="text-2xl font-semibold mb-4 text-center">Login</h2>
-      {error && <Error message={error} />}
+    <div className="d-flex vh-100 justify-content-center align-items-center bg-light">
+      <div className="p-5 bg-white shadow-lg rounded-lg" style={{ width: '400px' }}>
+        <h2 className="text-center mb-3">Sign in</h2>
+        <p className="text-center">
+          Don’t have an account? <a href="mailto:admin@example.com" className="text-primary">Contact Admin</a>
+        </p>
 
-      {/* Username Input */}
-      <Input
-        type="text"
-        placeholder="Username"
-        value={username}
-        onChange={(e) => setUsername(e.target.value)}
-        required
-        className="mb-4"
-      />
+        {error && <Error message={error} />}
 
-      {/* Password Input with Show/Hide Feature */}
-      <Form.Group className="mb-4">
-        <Form.Label>Password</Form.Label>
-        <InputGroup>
-          <Form.Control
-            type={showPassword ? "text" : "password"} // ✅ Toggle visibility
-            placeholder="Enter password"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            required
-          />
-          <InputGroup.Text // ✅ Eye icon inside the field, on the right side
-            onClick={() => setShowPassword(!showPassword)}
-            style={{ cursor: 'pointer', background: 'white', borderLeft: 'none' }}
-          >
-            {showPassword ? <FaEyeSlash /> : <FaEye />}
-          </InputGroup.Text>
-        </InputGroup>
-      </Form.Group>
+        <Form onSubmit={handleSubmit}>
 
-      {/* Login Button */}
-      <Button type="submit" disabled={loading} className="w-full">
-        {loading ? 'Logging in...' : 'Login'}
-      </Button>
+          {/* Username Field */}
+          <Form.Group className="mb-3">
+            <Form.Label>Username</Form.Label>
+            <Input
+              type="text"
+              placeholder="Enter your username"
+              value={username}
+              onChange={(e) => setUsername(e.target.value)}
+              required
+            />
+          </Form.Group>
 
-      {/* Contact Admin for Account */}
-      <div className="text-center mt-3">
-        <p>Don't have an account? <a href="mailto:admin@example.com">Contact Admin</a></p>
+          {/* Password Field with "Forgot Password?" and Toggle Icon */}
+          <Form.Group className="mb-3">
+            <div className="d-flex justify-content-between">
+              <Form.Label>Password</Form.Label>
+              <a href="#" className="text-primary small">Forgot password?</a>
+            </div>
+            <InputGroup>
+              <Input
+                type={showPassword ? "text" : "password"}
+                placeholder="Enter your password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                required
+              />
+              <InputGroup.Text // ✅ Eye icon inside the field, on the right
+                onClick={() => setShowPassword(!showPassword)}
+                style={{ cursor: 'pointer', background: 'white', borderLeft: 'none' }}
+              >
+                {showPassword ? <FaEyeSlash /> : <FaEye />}
+              </InputGroup.Text>
+            </InputGroup>
+          </Form.Group>
+
+          {/* Sign In Button */}
+          <Button type="submit" disabled={loading} className="w-100 bg-dark text-white">
+            {loading ? 'Signing in...' : 'Sign in'}
+          </Button>
+
+        </Form>
       </div>
-    </form>
+    </div>
   );
 };
 
