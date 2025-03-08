@@ -1,83 +1,62 @@
-import React, { useState } from 'react';
-import { Table, Form, Dropdown, Button } from 'react-bootstrap';
-import { FaCheckCircle, FaEdit, FaTrash } from 'react-icons/fa';
-
-const usersData = [
-  { id: 1, name: "Adam Trantow", company: "Mohr, Langworth and Hills", role: "UI Designer", verified: true, status: "Active", avatar: "https://i.pravatar.cc/40?img=1" },
-  { id: 2, name: "Angel Rolfson-Kulas", company: "Koch and Sons", role: "UI Designer", verified: true, status: "Active", avatar: "https://i.pravatar.cc/40?img=2" },
-  { id: 3, name: "Betty Hammes", company: "Waelchi – VonRueden", role: "UI Designer", verified: true, status: "Active", avatar: "https://i.pravatar.cc/40?img=3" },
-  { id: 4, name: "Billy Braun", company: "White, Cassin and Goldner", role: "UI Designer", verified: false, status: "Banned", avatar: "https://i.pravatar.cc/40?img=4" },
-  { id: 5, name: "Billy Stoltenberg", company: "Medhurst, Moore and Franey", role: "Leader", verified: false, status: "Banned", avatar: "https://i.pravatar.cc/40?img=5" }
-];
-
-const UserTable = () => {
-  const [search, setSearch] = useState('');
-  const filteredUsers = usersData.filter(user =>
-    user.name.toLowerCase().includes(search.toLowerCase())
-  );
-
+import React, { useState, useContext } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { loginUser } from '../../services/authService';
+import { AuthContext } from '../../context/AuthContext';
+import Button from '../Common/Button';
+import Input from '../Common/Input';
+import Error from '../Common/Error';
+ 
+const LoginForm = () => {
+  const [username, setUsername] = useState('');
+  const [password, setPassword] = useState('');
+  const [error, setError] = useState('');
+  const [loading, setLoading] = useState(false);
+ 
+  const navigate = useNavigate();
+  const { setIsAuthenticated } = useContext(AuthContext);
+ 
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    setLoading(true);
+    setError('');
+ 
+    try {
+      await loginUser(username, password);
+      setIsAuthenticated(true);
+      navigate('/dashboard');
+    } catch (err) {
+      setError(err.response?.data?.message || 'Invalid username or password.');
+      setIsAuthenticated(false);
+    } finally {
+      setLoading(false);
+    }
+  };
+ 
   return (
-    <div className="container mt-4">
-      <h4 className="mb-3">Users</h4>
-      <div className="d-flex justify-content-between mb-3">
-        <Form.Control
-          type="text"
-          placeholder="Search user..."
-          className="w-25"
-          onChange={(e) => setSearch(e.target.value)}
-        />
-        <Button variant="primary">+ New User</Button>
-      </div>
-
-      <Table striped bordered hover responsive>
-        <thead>
-          <tr>
-            <th><Form.Check type="checkbox" /></th>
-            <th>Name</th>
-            <th>Company</th>
-            <th>Role</th>
-            <th>Verified</th>
-            <th>Status</th>
-            <th>Actions</th>
-          </tr>
-        </thead>
-        <tbody>
-          {filteredUsers.map(user => (
-            <tr key={user.id}>
-              <td><Form.Check type="checkbox" /></td>
-              <td>
-                <img src={user.avatar} alt="avatar" className="rounded-circle me-2" width="30" />
-                {user.name}
-              </td>
-              <td>{user.company}</td>
-              <td>{user.role}</td>
-              <td className="text-center">
-                {user.verified ? <FaCheckCircle className="text-success" /> : "-"}
-              </td>
-              <td>
-                <span className={`badge ${user.status === "Active" ? "bg-success" : "bg-danger"}`}>
-                  {user.status}
-                </span>
-              </td>
-              <td>
-                <Dropdown>
-                  <Dropdown.Toggle variant="light" size="sm">
-                    •••
-                  </Dropdown.Toggle>
-                  <Dropdown.Menu>
-                    <Dropdown.Item href="#"><FaEdit className="me-2" /> Edit</Dropdown.Item>
-                    <Dropdown.Item href="#" className="text-danger">
-                      <FaTrash className="me-2" /> Delete
-                    </Dropdown.Item>
-                  </Dropdown.Menu>
-                </Dropdown>
-              </td>
-            </tr>
-          ))}
-        </tbody>
-      </Table>
-    </div>
+    <form onSubmit={handleSubmit} className="max-w-md mx-auto p-6 bg-white shadow rounded-lg">
+      <h2 className="text-2xl font-semibold mb-4">Login</h2>
+      {error && <Error message={error} />}
+      <Input
+        type="text"
+        placeholder="Username"
+        value={username}
+        onChange={(e) => setUsername(e.target.value)}
+        required
+        className="mb-4"
+      />
+      <Input
+        type="password"
+        placeholder="Password"
+        value={password}
+        onChange={(e) => setPassword(e.target.value)}
+        required
+        className="mb-4"
+      />
+      <Button type="submit" disabled={loading} className="w-full">
+        {loading ? 'Logging in...' : 'Login'}
+      </Button>
+    </form>
   );
 };
-
-export default UserTable;
+ 
+export default LoginForm;
