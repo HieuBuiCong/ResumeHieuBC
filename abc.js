@@ -1,104 +1,96 @@
-import { useState, useCallback, useContext } from 'react';
+import React, { useState, useContext } from 'react';
 import { useNavigate } from 'react-router-dom';
-import Box from '@mui/material/Box';
-import Link from '@mui/material/Link';
-import TextField from '@mui/material/TextField';
-import IconButton from '@mui/material/IconButton';
-import Typography from '@mui/material/Typography';
-import LoadingButton from '@mui/lab/LoadingButton';
-import InputAdornment from '@mui/material/InputAdornment';
-import { AuthContext } from '../context/AuthContext';
-import apiClient from '../services/apiClient';
-import { Iconify } from '../components/iconify'; // Replace with actual icon component
+import { loginUser } from '../../services/authService';
+import { AuthContext } from '../../context/AuthContext';
+import Button from '../Common/Button';
+import Input from '../Common/Input';
+import Error from '../Common/Error';
+import { Form, InputGroup } from 'react-bootstrap';
+import { FaEye, FaEyeSlash } from 'react-icons/fa';
 
-export function AuthPage() {
+const LoginForm = () => {
+  const [username, setUsername] = useState('');
+  const [password, setPassword] = useState('');
+  const [error, setError] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [showPassword, setShowPassword] = useState(false); // ✅ Toggle password visibility
+
   const navigate = useNavigate();
   const { setIsAuthenticated } = useContext(AuthContext);
 
-  const [showPassword, setShowPassword] = useState(false);
-  const [loading, setLoading] = useState(false);
-  const [credentials, setCredentials] = useState({ username: '', password: '' });
-
-  const handleInputChange = (e) => {
-    setCredentials({ ...credentials, [e.target.name]: e.target.value });
-  };
-
-  const handleSignIn = useCallback(async () => {
+  const handleSubmit = async (e) => {
+    e.preventDefault();
     setLoading(true);
+    setError('');
+
     try {
-      const response = await apiClient.post('/auth/login', credentials);
-      if (response.status === 200) {
-        setIsAuthenticated(true);
-        navigate('/dashboard');
-      }
-    } catch (error) {
-      console.error('Login failed:', error.response?.data?.message || error.message);
+      await loginUser(username, password);
+      setIsAuthenticated(true);
+      navigate('/dashboard');
+    } catch (err) {
+      setError(err.response?.data?.message || 'Invalid username or password.');
+      setIsAuthenticated(false);
     } finally {
       setLoading(false);
     }
-  }, [credentials, navigate, setIsAuthenticated]);
+  };
 
   return (
-    <Box display="flex" flexDirection="column" alignItems="center" sx={{ mt: 8 }}>
-      <Box gap={1.5} display="flex" flexDirection="column" alignItems="center" sx={{ mb: 5 }}>
-        <Typography variant="h5">Sign in</Typography>
-        <Typography variant="body2" color="text.secondary">
-          Don’t have an account?
-          <Link variant="subtitle2" sx={{ ml: 0.5 }} 
-                href="mailto:hieu.bui-cong@hitachienergy.com ; duy.van-dang1@hitachienergy.com">
-            Contact Admin
-          </Link>
-        </Typography>
-      </Box>
+    <div className="d-flex vh-50 justify-content-center align-items-center bg-light p-5 bg-white shadow-lg rounded-lg" style={{ width: '400px' }}>
+      <div  style={{ width: '400px' }}>
+        <h2 className="text-center mb-3">Sign in</h2>
+        <p className="text-center">
+          Don’t have an account? <a href="mailto:admin@example.com" className="text-primary">Contact Admin</a>
+        </p>
 
-      <Box display="flex" flexDirection="column" alignItems="flex-end">
-        <TextField
-          fullWidth
-          name="username"
-          label="Username"
-          value={credentials.username}
-          onChange={handleInputChange}
-          InputLabelProps={{ shrink: true }}
-          sx={{ mb: 3 }}
-        />
+        {error && <Error message={error} />}
 
-        <TextField
-          fullWidth
-          name="password"
-          label="Password"
-          type={showPassword ? 'text' : 'password'}
-          value={credentials.password}
-          onChange={handleInputChange}
-          InputLabelProps={{ shrink: true }}
-          InputProps={{
-            endAdornment: (
-              <InputAdornment position="end">
-                <IconButton onClick={() => setShowPassword(!showPassword)} edge="end">
-                  <Iconify icon={showPassword ? 'solar:eye-bold' : 'solar:eye-closed-bold'} />
-                </IconButton>
-              </InputAdornment>
-            ),
-          }}
-          sx={{ mb: 3 }}
-        />
+        <Form onSubmit={handleSubmit}>
 
-        <Link variant="body2" color="inherit" sx={{ mb: 1.5 }}>
-          Forgot password?
-        </Link>
+          {/* Username Field */}
+          <Form.Group className="mb-3">
+            <Form.Label>Username</Form.Label>
+            <Input
+              type="text"
+              placeholder="Enter your username"
+              value={username}
+              onChange={(e) => setUsername(e.target.value)}
+              required
+            />
+          </Form.Group>
 
-        <LoadingButton
-          fullWidth
-          size="large"
-          color="primary"
-          variant="contained"
-          onClick={handleSignIn}
-          loading={loading}
-        >
-          Sign in
-        </LoadingButton>
-      </Box>
-    </Box>
+          {/* Password Field with "Forgot Password?" and Toggle Icon */}
+          <Form.Group className="mb-3">
+            <div className="d-flex justify-content-between">
+              <Form.Label>Password</Form.Label>
+              <a href="#" className="text-primary small">Forgot password?</a>
+            </div>
+            <InputGroup>
+              <Input
+                type={showPassword ? "text" : "password"}
+                placeholder="Enter your password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                required
+              />
+              <InputGroup.Text // ✅ Eye icon inside the field, on the right
+                onClick={() => setShowPassword(!showPassword)}
+                style={{ cursor: 'pointer', background: 'white', borderLeft: 'none' }}
+              >
+                {showPassword ? <FaEyeSlash /> : <FaEye />}
+              </InputGroup.Text>
+            </InputGroup>
+          </Form.Group>
+
+          {/* Sign In Button */}
+          <Button type="submit" disabled={loading} className="w-100 bg-dark text-white">
+            {loading ? 'Signing in...' : 'Sign in'}
+          </Button>
+
+        </Form>
+      </div>
+    </div>
   );
-}
+};
 
-export default AuthPage;
+export default LoginForm;
