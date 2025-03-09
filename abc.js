@@ -8,8 +8,10 @@ import {
   Avatar,
   Typography,
   Divider,
-  ClickAwayListener,
   Switch,
+  ClickAwayListener,
+  Box,
+  InputBase,
 } from "@mui/material";
 import { styled, ThemeProvider, createTheme } from "@mui/material/styles";
 import { Container, Nav } from "react-bootstrap";
@@ -24,6 +26,7 @@ import SettingsIcon from "@mui/icons-material/Settings";
 import PeopleIcon from "@mui/icons-material/People";
 import BusinessIcon from "@mui/icons-material/Business";
 import SearchIcon from "@mui/icons-material/Search";
+import CloseIcon from "@mui/icons-material/Close";
 
 const MyNavbar = () => {
   // 🔹 Dark mode state
@@ -35,7 +38,10 @@ const MyNavbar = () => {
 
   // 🔹 Hover dropdown states
   const [projectsOpen, setProjectsOpen] = useState(false);
-  const [projectsAnchor, setProjectsAnchor] = useState(null);
+
+  // 🔹 Search bar state
+  const [searchOpen, setSearchOpen] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
 
   // 🔹 Handle Dark Mode Toggle
   const handleDarkModeToggle = () => {
@@ -59,8 +65,8 @@ const MyNavbar = () => {
         position="fixed"
         sx={{
           background: darkMode
-            ? "linear-gradient(135deg, rgba(0,0,0,0.8), rgba(0,0,0,0.6))"
-            : "linear-gradient(135deg, rgba(255,255,255,0.2), rgba(255,255,255,0.05))", // ✅ Glassmorphism
+            ? "rgba(0,0,0,0.7)"
+            : "rgba(255,255,255,0.7)", // ✅ Glassmorphism
           backdropFilter: "blur(10px)",
           boxShadow: "0px 4px 10px rgba(0,0,0,0.2)",
           borderBottom: darkMode ? "1px solid rgba(255,255,255,0.3)" : "1px solid rgba(0,0,0,0.1)",
@@ -79,19 +85,34 @@ const MyNavbar = () => {
               <Nav.Link href="#" className="fw-semibold px-3 text-white">Add</Nav.Link>
 
               {/* 🔹 Projects Dropdown with Hover */}
-              <div
-                onMouseEnter={(e) => {
-                  setProjectsAnchor(e.currentTarget);
-                  setProjectsOpen(true);
-                }}
+              <Box
+                sx={{ position: "relative" }}
+                onMouseEnter={() => setProjectsOpen(true)}
                 onMouseLeave={() => setProjectsOpen(false)}
-                className="fw-semibold px-3 d-flex align-items-center text-white"
-                style={{ cursor: "pointer" }}
               >
-                <WorkIcon className="me-1 text-warning" />
-                Projects <ExpandMoreIcon />
-                <ClickAwayListener onClickAway={() => setProjectsOpen(false)}>
-                  <Menu anchorEl={projectsAnchor} open={projectsOpen} className="p-2">
+                <Nav.Link
+                  className="fw-semibold px-3 d-flex align-items-center text-white"
+                  style={{ cursor: "pointer" }}
+                >
+                  <WorkIcon className="me-1 text-warning" />
+                  Projects <ExpandMoreIcon />
+                </Nav.Link>
+
+                {projectsOpen && (
+                  <Box
+                    sx={{
+                      position: "absolute",
+                      top: "100%",
+                      left: 0,
+                      zIndex: 10,
+                      backgroundColor: darkMode ? "#333" : "white",
+                      color: darkMode ? "white" : "black",
+                      boxShadow: "0px 4px 10px rgba(0,0,0,0.2)",
+                      borderRadius: "5px",
+                      padding: "10px",
+                      width: "200px",
+                    }}
+                  >
                     <MenuItem>
                       <AddBoxIcon className="me-2 text-success" />
                       <Typography>Create Project</Typography>
@@ -104,9 +125,9 @@ const MyNavbar = () => {
                       <ArchiveIcon className="me-2 text-danger" />
                       <Typography>Archived Projects</Typography>
                     </MenuItem>
-                  </Menu>
-                </ClickAwayListener>
-              </div>
+                  </Box>
+                )}
+              </Box>
 
               <Nav.Link href="#" className="fw-semibold px-3 text-white">
                 <PeopleIcon className="me-2 text-primary" />
@@ -115,9 +136,32 @@ const MyNavbar = () => {
             </Nav>
 
             {/* 🔹 Search Bar */}
-            <IconButton sx={{ color: "white", mx: 2 }}>
-              <SearchIcon />
-            </IconButton>
+            {searchOpen ? (
+              <Box
+                sx={{
+                  display: "flex",
+                  alignItems: "center",
+                  backgroundColor: darkMode ? "#333" : "#fff",
+                  padding: "5px 10px",
+                  borderRadius: "20px",
+                  boxShadow: "0px 4px 10px rgba(0,0,0,0.2)",
+                }}
+              >
+                <InputBase
+                  placeholder="Search..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  sx={{ flexGrow: 1, color: darkMode ? "white" : "black", paddingLeft: "10px" }}
+                />
+                <IconButton onClick={() => setSearchOpen(false)} sx={{ color: "white" }}>
+                  <CloseIcon />
+                </IconButton>
+              </Box>
+            ) : (
+              <IconButton onClick={() => setSearchOpen(true)} sx={{ color: "white", mx: 2 }}>
+                <SearchIcon />
+              </IconButton>
+            )}
 
             {/* 🔹 Dark Mode Toggle */}
             <Switch checked={darkMode} onChange={handleDarkModeToggle} color="default" />
