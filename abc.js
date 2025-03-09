@@ -3,58 +3,27 @@ import {
   AppBar,
   Toolbar,
   IconButton,
-  InputBase,
   Menu,
   MenuItem,
   Avatar,
   Typography,
   Divider,
+  ClickAwayListener,
   Switch,
 } from "@mui/material";
-import { styled, alpha, ThemeProvider, createTheme } from "@mui/material/styles";
-import { Container, Nav, Navbar, Popper, Paper, Grow, ClickAwayListener } from "react-bootstrap";
-import SearchIcon from "@mui/icons-material/Search";
-import HomeIcon from "@mui/icons-material/Home";
-import BusinessIcon from "@mui/icons-material/Business";
-import GroupIcon from "@mui/icons-material/Group";
+import { styled, ThemeProvider, createTheme } from "@mui/material/styles";
+import { Container, Nav } from "react-bootstrap";
 import WorkIcon from "@mui/icons-material/Work";
 import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
 import AddBoxIcon from "@mui/icons-material/AddBox";
 import ListAltIcon from "@mui/icons-material/ListAlt";
 import ArchiveIcon from "@mui/icons-material/Archive";
-import SettingsIcon from "@mui/icons-material/Settings";
-import LogoutIcon from "@mui/icons-material/Logout";
-import NightlightIcon from "@mui/icons-material/Nightlight";
 import AccountCircleIcon from "@mui/icons-material/AccountCircle";
-import LightModeIcon from "@mui/icons-material/LightMode";
-
-// ✅ Modern Search Bar
-const Search = styled("div")(({ theme }) => ({
-  position: "relative",
-  borderRadius: "25px",
-  backgroundColor: alpha(theme.palette.common.white, 0.15),
-  "&:hover": { backgroundColor: alpha(theme.palette.common.white, 0.25) },
-  marginLeft: "auto",
-  width: "30%",
-  padding: "5px 15px",
-  border: `1px solid ${alpha(theme.palette.common.white, 0.4)}`,
-  boxShadow: "0px 0px 8px rgba(255, 255, 255, 0.1)",
-}));
-
-const SearchIconWrapper = styled("div")(({ theme }) => ({
-  padding: theme.spacing(0, 2),
-  height: "100%",
-  position: "absolute",
-  display: "flex",
-  alignItems: "center",
-  justifyContent: "center",
-}));
-
-const StyledInputBase = styled(InputBase)(({ theme }) => ({
-  color: "inherit",
-  width: "100%",
-  paddingLeft: `calc(1em + ${theme.spacing(4)})`,
-}));
+import LogoutIcon from "@mui/icons-material/Logout";
+import SettingsIcon from "@mui/icons-material/Settings";
+import PeopleIcon from "@mui/icons-material/People";
+import BusinessIcon from "@mui/icons-material/Business";
+import SearchIcon from "@mui/icons-material/Search";
 
 const MyNavbar = () => {
   // 🔹 Dark mode state
@@ -73,11 +42,6 @@ const MyNavbar = () => {
     setDarkMode((prev) => !prev);
     localStorage.setItem("darkMode", !darkMode);
   };
-
-  // 🔹 Load Dark Mode from localStorage
-  useEffect(() => {
-    document.body.style.backgroundColor = darkMode ? "#121212" : "#f8f9fa";
-  }, [darkMode]);
 
   // 🔹 Define Light & Dark Themes
   const theme = createTheme({
@@ -105,10 +69,10 @@ const MyNavbar = () => {
         <Container>
           <Toolbar className="d-flex justify-content-between">
             {/* 🔹 Company Logo */}
-            <Navbar.Brand className="fw-bold fs-4 d-flex align-items-center text-white">
-              <HomeIcon className="me-2 text-primary" />
+            <Typography variant="h6" sx={{ fontWeight: "bold", cursor: "pointer" }}>
+              <BusinessIcon sx={{ verticalAlign: "middle", mr: 1 }} />
               My Company
-            </Navbar.Brand>
+            </Typography>
 
             {/* 🔹 Navigation Links */}
             <Nav className="me-auto d-flex align-items-center">
@@ -126,54 +90,37 @@ const MyNavbar = () => {
               >
                 <WorkIcon className="me-1 text-warning" />
                 Projects <ExpandMoreIcon />
-                <Popper open={projectsOpen} anchorEl={projectsAnchor} transition>
-                  {({ TransitionProps }) => (
-                    <Grow {...TransitionProps} style={{ transformOrigin: "top center" }}>
-                      <Paper elevation={6} className="shadow-lg rounded-lg">
-                        <ClickAwayListener onClickAway={() => setProjectsOpen(false)}>
-                          <Menu open={projectsOpen} className="p-2">
-                            <MenuItem>
-                              <AddBoxIcon className="me-2 text-success" />
-                              <Typography>Create Project</Typography>
-                            </MenuItem>
-                            <MenuItem>
-                              <ListAltIcon className="me-2 text-primary" />
-                              <Typography>Manage Projects</Typography>
-                            </MenuItem>
-                            <MenuItem>
-                              <ArchiveIcon className="me-2 text-danger" />
-                              <Typography>Archived Projects</Typography>
-                            </MenuItem>
-                          </Menu>
-                        </ClickAwayListener>
-                      </Paper>
-                    </Grow>
-                  )}
-                </Popper>
+                <ClickAwayListener onClickAway={() => setProjectsOpen(false)}>
+                  <Menu anchorEl={projectsAnchor} open={projectsOpen} className="p-2">
+                    <MenuItem>
+                      <AddBoxIcon className="me-2 text-success" />
+                      <Typography>Create Project</Typography>
+                    </MenuItem>
+                    <MenuItem>
+                      <ListAltIcon className="me-2 text-primary" />
+                      <Typography>Manage Projects</Typography>
+                    </MenuItem>
+                    <MenuItem>
+                      <ArchiveIcon className="me-2 text-danger" />
+                      <Typography>Archived Projects</Typography>
+                    </MenuItem>
+                  </Menu>
+                </ClickAwayListener>
               </div>
 
               <Nav.Link href="#" className="fw-semibold px-3 text-white">
-                <GroupIcon className="me-1 text-success" />
+                <PeopleIcon className="me-2 text-primary" />
                 Employees
-              </Nav.Link>
-              <Nav.Link href="#" className="fw-semibold px-3 text-white">
-                <BusinessIcon className="me-1 text-danger" />
-                Company
               </Nav.Link>
             </Nav>
 
             {/* 🔹 Search Bar */}
-            <Search>
-              <SearchIconWrapper>
-                <SearchIcon />
-              </SearchIconWrapper>
-              <StyledInputBase placeholder="Search…" />
-            </Search>
+            <IconButton sx={{ color: "white", mx: 2 }}>
+              <SearchIcon />
+            </IconButton>
 
             {/* 🔹 Dark Mode Toggle */}
-            <IconButton onClick={handleDarkModeToggle} color="inherit">
-              {darkMode ? <LightModeIcon /> : <NightlightIcon />}
-            </IconButton>
+            <Switch checked={darkMode} onChange={handleDarkModeToggle} color="default" />
 
             {/* 🔹 Profile Avatar */}
             <IconButton onClick={(e) => setAnchorEl(e.currentTarget)} color="inherit">
