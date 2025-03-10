@@ -26,15 +26,15 @@ import ClearIcon from "@mui/icons-material/Clear";
 
 // ✅ Sample Data
 const usersData = [
-  { id: 1, name: "Adam Trantow", company: "Mohr, Langworth and Hills", role: "UI Designer", verified: true, status: "Active" },
-  { id: 2, name: "Angel Rolfson-Kulas", company: "Koch and Sons", role: "UI Designer", verified: true, status: "Active" },
-  { id: 3, name: "Betty Hammes", company: "Waelchi – VonRueden", role: "UI Designer", verified: true, status: "Active" },
-  { id: 4, name: "Billy Braun", company: "White, Cassin and Goldner", role: "UI Designer", verified: false, status: "Banned" },
-  { id: 5, name: "Billy Stoltenberg", company: "Medhurst, Moore and Franey", role: "Leader", verified: false, status: "Banned" }
+  { id: 1, name: "Adam Trantow", company: "Mohr, Langworth and Hills", role: "UI Designer", status: "Active" },
+  { id: 2, name: "Angel Rolfson-Kulas", company: "Koch and Sons", role: "UI Designer",  status: "Active" },
+  { id: 3, name: "Betty Hammes", company: "Waelchi – VonRueden", role: "UI Designer",  status: "Active" },
+  { id: 4, name: "Billy Braun", company: "White, Cassin and Goldner", role: "UI Designer",  status: "Banned" },
+  { id: 5, name: "Billy Stoltenberg", company: "Medhurst, Moore and Franey", role: "Leader",  status: "Banned" }
 ];
 
 // ✅ Table Columns
-const columns = ["name", "company", "role", "verified", "status"];
+const columns = ["id","name", "company", "role", "status"];
 
 const UserTable = () => {
   const [searchQuery, setSearchQuery] = useState("");
@@ -59,11 +59,12 @@ const UserTable = () => {
 
   // ✅ Toggle Filter Selection
   const handleFilterChange = (value) => {
+    const strConvertedValue = String(value);
     setFilters((prev) => ({
       ...prev,
-      [filterColumn]: prev[filterColumn]?.includes(value)
-        ? prev[filterColumn].filter((v) => v !== value)
-        : [...(prev[filterColumn] || []), value],
+      [filterColumn]: prev[filterColumn]?.includes(strConvertedValue)
+        ? prev[filterColumn].filter((v) => v !== strConvertedValue)
+        : [...(prev[filterColumn] || []), strConvertedValue],
     }));
   };
 
@@ -139,11 +140,9 @@ const UserTable = () => {
               <TableRow key={user.id}>
                 {columns.map((column) => (
                   <TableCell key={column}>
-                    {column === "verified" ? (
-                      <Checkbox checked={user[column]} disabled />
-                    ) : (
+                    {
                       user[column]
-                    )}
+                    }
                   </TableCell>
                 ))}
               </TableRow>
