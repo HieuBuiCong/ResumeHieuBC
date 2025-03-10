@@ -14,11 +14,17 @@ import {
   Checkbox,
   TablePagination,
   InputAdornment,
+  Button,
+  List,
+  ListItem,
+  ListItemIcon,
+  ListItemText
 } from "@mui/material";
 import FilterListIcon from "@mui/icons-material/FilterList";
 import SearchIcon from "@mui/icons-material/Search";
+import ClearIcon from "@mui/icons-material/Clear";
 
-// ✅ Sample User Data
+// ✅ Sample Data
 const usersData = [
   { id: 1, name: "Adam Trantow", company: "Mohr, Langworth and Hills", role: "UI Designer", verified: true, status: "Active" },
   { id: 2, name: "Angel Rolfson-Kulas", company: "Koch and Sons", role: "UI Designer", verified: true, status: "Active" },
@@ -35,21 +41,23 @@ const UserTable = () => {
   const [filters, setFilters] = useState({});
   const [anchorEl, setAnchorEl] = useState(null);
   const [filterColumn, setFilterColumn] = useState("");
+  const [filterSearch, setFilterSearch] = useState("");
   const [page, setPage] = useState(0);
   const [rowsPerPage, setRowsPerPage] = useState(5);
 
-  // ✅ Handle Global Search
+  // ✅ Global Search
   const handleSearchChange = (e) => {
     setSearchQuery(e.target.value);
   };
 
-  // ✅ Handle Filter Dropdown Open
+  // ✅ Open Filter Menu
   const handleOpenFilter = (event, column) => {
     setAnchorEl(event.currentTarget);
     setFilterColumn(column);
+    setFilterSearch(""); // Reset dropdown search input
   };
 
-  // ✅ Handle Filter Selection
+  // ✅ Toggle Filter Selection
   const handleFilterChange = (value) => {
     setFilters((prev) => ({
       ...prev,
@@ -59,17 +67,24 @@ const UserTable = () => {
     }));
   };
 
-  // ✅ Handle Pagination Change
-  const handleChangePage = (event, newPage) => {
-    setPage(newPage);
+  // ✅ Clear Filters for a Column
+  const clearFilter = () => {
+    setFilters((prev) => {
+      const updatedFilters = { ...prev };
+      delete updatedFilters[filterColumn];
+      return updatedFilters;
+    });
+    setAnchorEl(null);
   };
 
+  // ✅ Handle Pagination
+  const handleChangePage = (event, newPage) => setPage(newPage);
   const handleChangeRowsPerPage = (event) => {
     setRowsPerPage(parseInt(event.target.value, 10));
     setPage(0);
   };
 
-  // ✅ Filtering Logic (Search + Column Filters)
+  // ✅ Apply Global & Column Filters
   const filteredUsers = usersData
     .filter((user) =>
       Object.keys(filters).every((column) =>
@@ -149,15 +164,41 @@ const UserTable = () => {
 
       {/* 📌 Column Filter Popper */}
       <Menu anchorEl={anchorEl} open={Boolean(anchorEl)} onClose={() => setAnchorEl(null)}>
-        {filterColumn &&
-          Array.from(new Set(usersData.map((user) => user[filterColumn])))
-            .filter((value) => value && value.toLowerCase().includes(searchQuery.toLowerCase())) // ✅ Ensure value is defined
-            .map((value) => (
-              <MenuItem key={value} onClick={() => handleFilterChange(value)}>
-                <Checkbox checked={filters[filterColumn]?.includes(value) || false} />
-                {value}
-              </MenuItem>
-            ))}
+        {/* 🔍 Filter Search */}
+        <TextField
+          label="Search..."
+          variant="outlined"
+          fullWidth
+          margin="dense"
+          value={filterSearch}
+          onChange={(e) => setFilterSearch(e.target.value)}
+          InputProps={{
+            startAdornment: (
+              <InputAdornment position="start">
+                <SearchIcon />
+              </InputAdornment>
+            ),
+          }}
+        />
+
+        <List>
+          {filterColumn &&
+            Array.from(new Set(usersData.map((user) => user[filterColumn])))
+              .filter((value) => value && value.toLowerCase().includes(filterSearch.toLowerCase()))
+              .map((value) => (
+                <ListItem key={value} button onClick={() => handleFilterChange(value)}>
+                  <ListItemIcon>
+                    <Checkbox checked={filters[filterColumn]?.includes(value) || false} />
+                  </ListItemIcon>
+                  <ListItemText primary={value} />
+                </ListItem>
+              ))}
+        </List>
+
+        {/* 🔄 Clear Filter */}
+        <Button fullWidth onClick={clearFilter} startIcon={<ClearIcon />} sx={{ mt: 1 }}>
+          Clear Filter
+        </Button>
       </Menu>
     </Paper>
   );
