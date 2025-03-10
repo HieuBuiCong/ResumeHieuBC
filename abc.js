@@ -10,6 +10,7 @@ import {
   IconButton,
   TextField,
   Menu,
+  MenuItem,
   Checkbox,
   TablePagination,
   InputAdornment,
@@ -17,7 +18,8 @@ import {
   List,
   ListItem,
   ListItemIcon,
-  ListItemText
+  ListItemText,
+  TableSortLabel
 } from "@mui/material";
 import FilterListIcon from "@mui/icons-material/FilterList";
 import SearchIcon from "@mui/icons-material/Search";
@@ -43,6 +45,8 @@ const UserTable = () => {
   const [filterSearch, setFilterSearch] = useState("");
   const [page, setPage] = useState(0);
   const [rowsPerPage, setRowsPerPage] = useState(5);
+  const [sortColumn, setSortColumn] = useState(null);
+  const [sortOrder, setSortOrder] = useState("asc");
 
   // ✅ Global Search
   const handleSearchChange = (e) => {
@@ -58,12 +62,12 @@ const UserTable = () => {
 
   // ✅ Toggle Filter Selection
   const handleFilterChange = (value) => {
-    const strValue = String(value); // ✅ Convert to string for consistency
+    const strConvertedValue = String(value);
     setFilters((prev) => ({
       ...prev,
-      [filterColumn]: prev[filterColumn]?.includes(strValue)
-        ? prev[filterColumn].filter((v) => v !== strValue)
-        : [...(prev[filterColumn] || []), strValue],
+      [filterColumn]: prev[filterColumn]?.includes(strConvertedValue)
+        ? prev[filterColumn].filter((v) => v !== strConvertedValue)
+        : [...(prev[filterColumn] || []), strConvertedValue],
     }));
   };
 
@@ -88,18 +92,24 @@ const UserTable = () => {
   const filteredUsers = usersData
     .filter((user) =>
       Object.keys(filters).every((column) =>
-        filters[column]?.length ? filters[column].includes(String(user[column])) : true // ✅ Convert all values to strings
+        filters[column]?.length ? filters[column].includes(user[column]) : true
       )
     )
     .filter((user) =>
       Object.values(user)
-        .map((v) => String(v).toLowerCase()) // ✅ Convert everything to string & lowercase before filtering
         .join(" ")
+        .toLowerCase()
         .includes(searchQuery.toLowerCase())
-    );
+    )
+    .sort((a, b) => {
+      if (!sortColumn) return 0;
+      return sortOrder === "asc"
+        ? a[sortColumn].toString().localeCompare(b[sortColumn].toString())
+        : b[sortColumn].toString().localeCompare(a[sortColumn].toString());
+    });
 
   return (
-    <Paper sx={{ width: "100%", overflow: "hidden", p: 2 }}>
+    <Paper sx={{ width: "100%", overflow: "hidden", p: 3, borderRadius: 3, boxShadow: 3 }}>
       {/* 🔍 Global Search */}
       <TextField
         label="Search..."
@@ -117,14 +127,23 @@ const UserTable = () => {
         }}
       />
 
-      <TableContainer>
-        <Table>
+      <TableContainer component={Paper} sx={{ borderRadius: 2 }}>
+        <Table sx={{ minWidth: 650 }} stickyHeader>
           {/* 🏷 Table Head with Filters */}
           <TableHead>
-            <TableRow>
+            <TableRow sx={{ backgroundColor: "#f4f4f4" }}>
               {columns.map((column) => (
-                <TableCell key={column}>
-                  <span style={{ fontWeight: "bold" }}>{column.toUpperCase()}</span>
+                <TableCell key={column} sx={{ fontWeight: "bold" }}>
+                  <TableSortLabel
+                    active={sortColumn === column}
+                    direction={sortColumn === column ? sortOrder : "asc"}
+                    onClick={() => {
+                      setSortOrder(sortColumn === column && sortOrder === "asc" ? "desc" : "asc");
+                      setSortColumn(column);
+                    }}
+                  >
+                    {column.toUpperCase()}
+                  </TableSortLabel>
                   <IconButton onClick={(e) => handleOpenFilter(e, column)}>
                     <FilterListIcon />
                   </IconButton>
@@ -135,12 +154,16 @@ const UserTable = () => {
 
           {/* 🏷 Table Body */}
           <TableBody>
-            {filteredUsers.slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage).map((user) => (
-              <TableRow key={user.id}>
+            {filteredUsers.slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage).map((user, index) => (
+              <TableRow
+                key={user.id}
+                sx={{
+                  backgroundColor: index % 2 === 0 ? "#f9f9f9" : "#ffffff",
+                  "&:hover": { backgroundColor: "#e3f2fd" },
+                }}
+              >
                 {columns.map((column) => (
-                  <TableCell key={column}>
-                    {user[column]}
-                  </TableCell>
+                  <TableCell key={column}>{user[column]}</TableCell>
                 ))}
               </TableRow>
             ))}
@@ -156,6 +179,7 @@ const UserTable = () => {
         rowsPerPage={rowsPerPage}
         onPageChange={handleChangePage}
         onRowsPerPageChange={handleChangeRowsPerPage}
+        rowsPerPageOptions={[5, 10, 25, 50, 100]} // ✅ Includes 5
       />
 
       {/* 📌 Column Filter Popper */}
@@ -179,8 +203,8 @@ const UserTable = () => {
 
         <List>
           {filterColumn &&
-            Array.from(new Set(usersData.map((user) => String(user[filterColumn]))))
-              .filter((value) => value.toLowerCase().includes(filterSearch.toLowerCase()))
+            Array.from(new Set(usersData.map((user) => user[filterColumn])))
+              .filter((value) => value && value.toLowerCase().includes(filterSearch.toLowerCase()))
               .map((value) => (
                 <ListItem key={value} button onClick={() => handleFilterChange(value)}>
                   <ListItemIcon>
