@@ -59,7 +59,7 @@ const UserTable = () => {
 
   // ✅ Toggle Filter Selection
   const handleFilterChange = (value) => {
-    const strConvertedValue = String(value);
+    const strConvertedValue = String(value); // ✅ Convert to string for consistency
     setFilters((prev) => ({
       ...prev,
       [filterColumn]: prev[filterColumn]?.includes(strConvertedValue)
@@ -89,11 +89,12 @@ const UserTable = () => {
   const filteredUsers = usersData
     .filter((user) =>
       Object.keys(filters).every((column) =>
-        filters[column]?.length ? filters[column].includes(user[column]) : true
+        filters[column]?.length ? filters[column].includes(String(user[column])) : true // ✅ Convert user[column] to string
       )
     )
     .filter((user) =>
       Object.values(user)
+        .map((v) => String(v)) // ✅ Ensure all values are compared as strings
         .join(" ")
         .toLowerCase()
         .includes(searchQuery.toLowerCase())
