@@ -24,11 +24,46 @@ import AccountCircleIcon from "@mui/icons-material/AccountCircle";
 import LogoutIcon from "@mui/icons-material/Logout";
 import SettingsIcon from "@mui/icons-material/Settings";
 import PeopleIcon from "@mui/icons-material/People";
-import BusinessIcon from "@mui/icons-material/Business";
 import SearchIcon from "@mui/icons-material/Search";
 import CloseIcon from "@mui/icons-material/Close";
 
+import InsertChartIcon from '@mui/icons-material/InsertChart';
+import TaskIcon from '@mui/icons-material/Task';
+import AutoAwesomeMosaicIcon from '@mui/icons-material/AutoAwesomeMosaic';
+import EmailIcon from '@mui/icons-material/Email';
+import CarpenterIcon from '@mui/icons-material/Carpenter';
+import CorporateFareIcon from '@mui/icons-material/CorporateFare';
+import AddTaskIcon from '@mui/icons-material/AddTask';
+import QuizIcon from '@mui/icons-material/Quiz';
+import SettingsSystemDaydreamIcon from '@mui/icons-material/SettingsSystemDaydream';
+
+// Set-up log-out
+import { useContext } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { logoutUser } from '../../services/authService';
+import { AuthContext } from '../../context/AuthContext';
+
+const cidLogo = "/assets/CIDLogo.png";
+
+
 const MyNavbar = () => {
+
+  // Set-up log-out
+  const navigate = useNavigate();
+  const { setIsAuthenticated, isAdmin, setIsAdmin, username } = useContext(AuthContext);
+
+  // define logout function
+  const handleLogout = async () => {
+    try {
+      await logoutUser();
+      setIsAuthenticated(false);
+      setIsAdmin(false);
+      navigate('/login');
+    } catch (error) {
+      console.error('Logout failed:', error);
+    }
+  };
+
   // 🔹 Dark mode state
   const [darkMode, setDarkMode] = useState(() => localStorage.getItem("darkMode") === "true");
 
@@ -38,6 +73,12 @@ const MyNavbar = () => {
 
   // 🔹 Hover dropdown states
   const [projectsOpen, setProjectsOpen] = useState(false);
+
+   // 🔹 Hover dropdown states
+   const [settingOpen, setSettingOpen] = useState(false);
+
+  // 🔹 Hover dropdown CID state
+  const [cidOpen, setCidOpen] = useState(false);
 
   // 🔹 Search bar state
   const [searchOpen, setSearchOpen] = useState(false);
@@ -66,23 +107,73 @@ const MyNavbar = () => {
         sx={{
           background: darkMode
             ? "rgba(0,0,0,0.7)"
-            : "rgba(255,255,255,0.7)", // ✅ Glassmorphism
+            : "rgba(255,255,255,0.05)", // ✅ Glassmorphism
           backdropFilter: "blur(10px)",
           boxShadow: "0px 4px 10px rgba(0,0,0,0.2)",
-          borderBottom: darkMode ? "1px solid rgba(255,255,255,0.3)" : "1px solid rgba(0,0,0,0.1)",
+          borderBottom: darkMode ? "1px solid rgba(255,255,255,0.005)" : "1px solid rgba(0,0,0,0.1)",
         }}
       >
+        {/* CID Logo Aligned to Left-Top */}
+        <img src={cidLogo} className="position-absolute top-0 pb-2 start-0 pt-3 pl-6 h-15" />
+
         <Container>
           <Toolbar className="d-flex justify-content-between">
-            {/* 🔹 Company Logo */}
-            <Typography variant="h6" sx={{ fontWeight: "bold", cursor: "pointer" }}>
-              <BusinessIcon sx={{ verticalAlign: "middle", mr: 1 }} />
-              My Company
-            </Typography>
 
             {/* 🔹 Navigation Links */}
             <Nav className="me-auto d-flex align-items-center">
-              <Nav.Link href="#" className="fw-semibold px-3 text-white">Add</Nav.Link>
+
+              {/* 🔹 Dashboard */}
+              <Nav.Link href="#" className="fw-semibold px-3 text-white">
+                <InsertChartIcon className="me-2 text-primary" />
+                Dashboard
+              </Nav.Link>
+
+              {/* 🔹 Projects Dropdown with Hover */}
+              <Box
+                sx={{ position: "relative" }}
+                onMouseEnter={() => setCidOpen(true)}
+                onMouseLeave={() => setCidOpen(false)}
+              >
+                <Nav.Link
+                  className="fw-semibold px-3 d-flex align-items-center text-white"
+                  style={{ cursor: "pointer" }}
+                >
+                  <WorkIcon className="me-1 text-warning" />
+                  CID <ExpandMoreIcon />
+                </Nav.Link>
+
+                {cidOpen && (
+                  <Box
+                    sx={{
+                      position: "absolute",
+                      top: "100%",
+                      left: 0,
+                      zIndex: 10,
+                      backgroundColor: darkMode ? "#333" : "white",
+                      color: darkMode ? "white" : "black",
+                      boxShadow: "0px 4px 10px rgba(0,0,0,0.2)",
+                      borderRadius: "5px",
+                      padding: "10px",
+                      width: "200px",
+                    }}
+                  >
+                    <MenuItem>
+                      <AddBoxIcon className="me-2 text-success" />
+                      <Typography>Create CID</Typography>
+                    </MenuItem>
+                    <MenuItem>
+                      <ListAltIcon className="me-2 text-primary" />
+                      <Typography>Manage CIDs</Typography>
+                    </MenuItem>
+                  </Box>
+                )}
+              </Box>
+
+              {/* 🔹 Dashboard */}
+              <Nav.Link href="#" className="fw-semibold px-3 text-white">
+                <TaskIcon className="me-2 text-danger" />
+                My Tasks
+              </Nav.Link>              
 
               {/* 🔹 Projects Dropdown with Hover */}
               <Box
@@ -94,8 +185,8 @@ const MyNavbar = () => {
                   className="fw-semibold px-3 d-flex align-items-center text-white"
                   style={{ cursor: "pointer" }}
                 >
-                  <WorkIcon className="me-1 text-warning" />
-                  Projects <ExpandMoreIcon />
+                  <AutoAwesomeMosaicIcon className="me-1 text-success" />
+                  More <ExpandMoreIcon />
                 </Nav.Link>
 
                 {projectsOpen && (
@@ -114,25 +205,73 @@ const MyNavbar = () => {
                     }}
                   >
                     <MenuItem>
-                      <AddBoxIcon className="me-2 text-success" />
-                      <Typography>Create Project</Typography>
+                      <CarpenterIcon className="me-2 text-success" />
+                      <Typography>Product</Typography>
                     </MenuItem>
                     <MenuItem>
-                      <ListAltIcon className="me-2 text-primary" />
-                      <Typography>Manage Projects</Typography>
+                      <CorporateFareIcon className="me-2 text-primary" />
+                      <Typography>Department</Typography>
                     </MenuItem>
                     <MenuItem>
-                      <ArchiveIcon className="me-2 text-danger" />
-                      <Typography>Archived Projects</Typography>
+                      <AddTaskIcon className="me-2 text-warning" />
+                      <Typography>Task Category</Typography>
+                    </MenuItem>
+                    <MenuItem>
+                      <QuizIcon className="me-2 text-danger" />
+                      <Typography>Task Question</Typography>
                     </MenuItem>
                   </Box>
                 )}
               </Box>
 
               <Nav.Link href="#" className="fw-semibold px-3 text-white">
-                <PeopleIcon className="me-2 text-primary" />
-                Employees
+                <SettingsSystemDaydreamIcon className="me-2 text-primary" />
+                BOM System
               </Nav.Link>
+
+              {/* 🔹 Projects Dropdown with Hover */}
+              { isAdmin &&
+                (<Box
+                  sx={{ position: "relative" }}
+                  onMouseEnter={() => setSettingOpen(true)}
+                  onMouseLeave={() => setSettingOpen(false)}
+                >
+                  <Nav.Link
+                    className="fw-semibold px-3 d-flex align-items-center text-white"
+                    style={{ cursor: "pointer" }}
+                  >
+                    <SettingsIcon className="me-1 text-black" />
+                    Setting <ExpandMoreIcon />
+                  </Nav.Link>
+
+                  {settingOpen && (
+                    <Box
+                      sx={{
+                        position: "absolute",
+                        top: "100%",
+                        left: 0,
+                        zIndex: 10,
+                        backgroundColor: darkMode ? "#333" : "white",
+                        color: darkMode ? "white" : "black",
+                        boxShadow: "0px 4px 10px rgba(0,0,0,0.2)",
+                        borderRadius: "5px",
+                        padding: "10px",
+                        width: "200px",
+                      }}
+                    >
+                      <MenuItem>
+                        <PeopleIcon className="me-2 text-success" />
+                        <Typography>User</Typography>
+                      </MenuItem>
+                      <MenuItem>
+                        <EmailIcon className="me-2 text-primary" />
+                        <Typography>Email Service</Typography>
+                      </MenuItem>
+                    </Box>
+                  )}
+                </Box>
+              )}
+
             </Nav>
 
             {/* 🔹 Search Bar */}
@@ -170,6 +309,7 @@ const MyNavbar = () => {
             <IconButton onClick={(e) => setAnchorEl(e.currentTarget)} color="inherit">
               <Avatar alt="User" src="https://mui.com/static/images/avatar/1.jpg" />
             </IconButton>
+            <Typography>{username}</Typography>
 
             {/* 🔹 Profile Dropdown */}
             <Menu anchorEl={anchorEl} open={open} onClose={() => setAnchorEl(null)}>
@@ -180,8 +320,8 @@ const MyNavbar = () => {
                 <SettingsIcon className="me-2" /> Settings
               </MenuItem>
               <Divider />
-              <MenuItem className="text-danger">
-                <LogoutIcon className="me-2" /> Logout
+              <MenuItem className="text-danger" onClick={handleLogout}>
+                <LogoutIcon className="me-2" /> Logout               
               </MenuItem>
             </Menu>
           </Toolbar>
