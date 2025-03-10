@@ -10,7 +10,6 @@ import {
   IconButton,
   TextField,
   Menu,
-  MenuItem,
   Checkbox,
   TablePagination,
   InputAdornment,
@@ -27,14 +26,14 @@ import ClearIcon from "@mui/icons-material/Clear";
 // ✅ Sample Data
 const usersData = [
   { id: 1, name: "Adam Trantow", company: "Mohr, Langworth and Hills", role: "UI Designer", status: "Active" },
-  { id: 2, name: "Angel Rolfson-Kulas", company: "Koch and Sons", role: "UI Designer",  status: "Active" },
-  { id: 3, name: "Betty Hammes", company: "Waelchi – VonRueden", role: "UI Designer",  status: "Active" },
-  { id: 4, name: "Billy Braun", company: "White, Cassin and Goldner", role: "UI Designer",  status: "Banned" },
-  { id: 5, name: "Billy Stoltenberg", company: "Medhurst, Moore and Franey", role: "Leader",  status: "Banned" }
+  { id: 2, name: "Angel Rolfson-Kulas", company: "Koch and Sons", role: "UI Designer", status: "Active" },
+  { id: 3, name: "Betty Hammes", company: "Waelchi – VonRueden", role: "UI Designer", status: "Active" },
+  { id: 4, name: "Billy Braun", company: "White, Cassin and Goldner", role: "UI Designer", status: "Banned" },
+  { id: 5, name: "Billy Stoltenberg", company: "Medhurst, Moore and Franey", role: "Leader", status: "Banned" }
 ];
 
 // ✅ Table Columns
-const columns = ["id","name", "company", "role", "status"];
+const columns = ["id", "name", "company", "role", "status"];
 
 const UserTable = () => {
   const [searchQuery, setSearchQuery] = useState("");
@@ -59,12 +58,12 @@ const UserTable = () => {
 
   // ✅ Toggle Filter Selection
   const handleFilterChange = (value) => {
-    const strConvertedValue = String(value); // ✅ Convert to string for consistency
+    const strValue = String(value); // ✅ Convert to string for consistency
     setFilters((prev) => ({
       ...prev,
-      [filterColumn]: prev[filterColumn]?.includes(strConvertedValue)
-        ? prev[filterColumn].filter((v) => v !== strConvertedValue)
-        : [...(prev[filterColumn] || []), strConvertedValue],
+      [filterColumn]: prev[filterColumn]?.includes(strValue)
+        ? prev[filterColumn].filter((v) => v !== strValue)
+        : [...(prev[filterColumn] || []), strValue],
     }));
   };
 
@@ -89,14 +88,13 @@ const UserTable = () => {
   const filteredUsers = usersData
     .filter((user) =>
       Object.keys(filters).every((column) =>
-        filters[column]?.length ? filters[column].includes(String(user[column])) : true // ✅ Convert user[column] to string
+        filters[column]?.length ? filters[column].includes(String(user[column])) : true // ✅ Convert all values to strings
       )
     )
     .filter((user) =>
       Object.values(user)
-        .map((v) => String(v)) // ✅ Ensure all values are compared as strings
+        .map((v) => String(v).toLowerCase()) // ✅ Convert everything to string & lowercase before filtering
         .join(" ")
-        .toLowerCase()
         .includes(searchQuery.toLowerCase())
     );
 
@@ -141,9 +139,7 @@ const UserTable = () => {
               <TableRow key={user.id}>
                 {columns.map((column) => (
                   <TableCell key={column}>
-                    {
-                      user[column]
-                    }
+                    {user[column]}
                   </TableCell>
                 ))}
               </TableRow>
@@ -183,8 +179,8 @@ const UserTable = () => {
 
         <List>
           {filterColumn &&
-            Array.from(new Set(usersData.map((user) => user[filterColumn])))
-              .filter((value) => value && value.toLowerCase().includes(filterSearch.toLowerCase()))
+            Array.from(new Set(usersData.map((user) => String(user[filterColumn]))))
+              .filter((value) => value.toLowerCase().includes(filterSearch.toLowerCase()))
               .map((value) => (
                 <ListItem key={value} button onClick={() => handleFilterChange(value)}>
                   <ListItemIcon>
