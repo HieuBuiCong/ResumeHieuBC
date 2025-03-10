@@ -7,145 +7,158 @@ import {
   TableHead,
   TableRow,
   Paper,
-  Checkbox,
-  Avatar,
   IconButton,
-  Popper,
-  ClickAwayListener,
-  Box,
-  FormControlLabel,
   TextField,
+  Menu,
+  MenuItem,
+  Checkbox,
   TablePagination,
+  InputAdornment,
 } from "@mui/material";
-import { FaFilter, FaCheckCircle, FaEdit, FaTrash, FaEllipsisV } from "react-icons/fa";
+import FilterListIcon from "@mui/icons-material/FilterList";
+import SearchIcon from "@mui/icons-material/Search";
 
+// ✅ Sample User Data
 const usersData = [
-  { id: 1, name: "Adam Trantow", company: "Mohr, Langworth and Hills", role: "UI Designer", verified: true, status: "Active", avatar: "https://i.pravatar.cc/40?img=1" },
-  { id: 2, name: "Angel Rolfson-Kulas", company: "Koch and Sons", role: "UI Designer", verified: true, status: "Active", avatar: "https://i.pravatar.cc/40?img=2" },
-  { id: 3, name: "Betty Hammes", company: "Waelchi – VonRueden", role: "UI Designer", verified: true, status: "Active", avatar: "https://i.pravatar.cc/40?img=3" },
-  { id: 4, name: "Billy Braun", company: "White, Cassin and Goldner", role: "UI Designer", verified: false, status: "Banned", avatar: "https://i.pravatar.cc/40?img=4" },
-  { id: 5, name: "Billy Stoltenberg", company: "Medhurst, Moore and Franey", role: "Leader", verified: false, status: "Banned", avatar: "https://i.pravatar.cc/40?img=5" },
+  { id: 1, name: "Adam Trantow", company: "Mohr, Langworth and Hills", role: "UI Designer", verified: true, status: "Active" },
+  { id: 2, name: "Angel Rolfson-Kulas", company: "Koch and Sons", role: "UI Designer", verified: true, status: "Active" },
+  { id: 3, name: "Betty Hammes", company: "Waelchi – VonRueden", role: "UI Designer", verified: true, status: "Active" },
+  { id: 4, name: "Billy Braun", company: "White, Cassin and Goldner", role: "UI Designer", verified: false, status: "Banned" },
+  { id: 5, name: "Billy Stoltenberg", company: "Medhurst, Moore and Franey", role: "Leader", verified: false, status: "Banned" }
 ];
 
-const columns = ["name", "company", "role", "status"];
+// ✅ Table Columns
+const columns = ["name", "company", "role", "verified", "status"];
 
 const UserTable = () => {
-  const [filters, setFilters] = useState({ name: [], company: [], role: [], status: [] });
-  const [anchorEl, setAnchorEl] = useState(null);
-  const [filterColumn, setFilterColumn] = useState(null);
   const [searchQuery, setSearchQuery] = useState("");
-
+  const [filters, setFilters] = useState({});
+  const [anchorEl, setAnchorEl] = useState(null);
+  const [filterColumn, setFilterColumn] = useState("");
   const [page, setPage] = useState(0);
   const [rowsPerPage, setRowsPerPage] = useState(5);
 
-  const handleFilterClick = (event, column) => {
-    setAnchorEl(anchorEl ? null : event.currentTarget);
+  // ✅ Handle Global Search
+  const handleSearchChange = (e) => {
+    setSearchQuery(e.target.value);
+  };
+
+  // ✅ Handle Filter Dropdown Open
+  const handleOpenFilter = (event, column) => {
+    setAnchorEl(event.currentTarget);
     setFilterColumn(column);
   };
 
+  // ✅ Handle Filter Selection
   const handleFilterChange = (value) => {
-    setFilters((prevFilters) => ({
-      ...prevFilters,
-      [filterColumn]: prevFilters[filterColumn].includes(value)
-        ? prevFilters[filterColumn].filter((v) => v !== value)
-        : [...prevFilters[filterColumn], value],
+    setFilters((prev) => ({
+      ...prev,
+      [filterColumn]: prev[filterColumn]?.includes(value)
+        ? prev[filterColumn].filter((v) => v !== value)
+        : [...(prev[filterColumn] || []), value],
     }));
   };
 
-  const handleClickAway = () => setAnchorEl(null);
+  // ✅ Handle Pagination Change
+  const handleChangePage = (event, newPage) => {
+    setPage(newPage);
+  };
 
-  const filteredUsers = usersData.filter((user) =>
-    columns.every((col) =>
-      filters[col].length === 0 || filters[col].includes(user[col])
+  const handleChangeRowsPerPage = (event) => {
+    setRowsPerPage(parseInt(event.target.value, 10));
+    setPage(0);
+  };
+
+  // ✅ Filtering Logic (Search + Column Filters)
+  const filteredUsers = usersData
+    .filter((user) =>
+      Object.keys(filters).every((column) =>
+        filters[column]?.length ? filters[column].includes(user[column]) : true
+      )
     )
-  );
+    .filter((user) =>
+      Object.values(user)
+        .join(" ")
+        .toLowerCase()
+        .includes(searchQuery.toLowerCase())
+    );
 
   return (
-    <Paper sx={{ padding: 3, boxShadow: 3 }}>
-      <h3>Users</h3>
+    <Paper sx={{ width: "100%", overflow: "hidden", p: 2 }}>
+      {/* 🔍 Global Search */}
+      <TextField
+        label="Search..."
+        variant="outlined"
+        fullWidth
+        margin="normal"
+        value={searchQuery}
+        onChange={handleSearchChange}
+        InputProps={{
+          startAdornment: (
+            <InputAdornment position="start">
+              <SearchIcon />
+            </InputAdornment>
+          ),
+        }}
+      />
+
       <TableContainer>
         <Table>
+          {/* 🏷 Table Head with Filters */}
           <TableHead>
             <TableRow>
-              <TableCell padding="checkbox"><Checkbox /></TableCell>
-              {columns.map((col) => (
-                <TableCell key={col}>
-                  {col.charAt(0).toUpperCase() + col.slice(1)}
-                  <IconButton size="small" onClick={(e) => handleFilterClick(e, col)}>
-                    <FaFilter />
+              {columns.map((column) => (
+                <TableCell key={column}>
+                  <span style={{ fontWeight: "bold" }}>{column.toUpperCase()}</span>
+                  <IconButton onClick={(e) => handleOpenFilter(e, column)}>
+                    <FilterListIcon />
                   </IconButton>
                 </TableCell>
               ))}
-              <TableCell align="right">Actions</TableCell>
             </TableRow>
           </TableHead>
+
+          {/* 🏷 Table Body */}
           <TableBody>
             {filteredUsers.slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage).map((user) => (
-              <TableRow key={user.id} hover>
-                <TableCell padding="checkbox"><Checkbox /></TableCell>
-                <TableCell>
-                  <Avatar src={user.avatar} sx={{ width: 30, height: 30, marginRight: 1 }} />
-                  {user.name}
-                </TableCell>
-                <TableCell>{user.company}</TableCell>
-                <TableCell>{user.role}</TableCell>
-                <TableCell>
-                  <span className={`badge ${user.status === "Active" ? "bg-success" : "bg-danger"}`}>
-                    {user.status}
-                  </span>
-                </TableCell>
-                <TableCell align="right">
-                  <IconButton size="small">
-                    <FaEllipsisV />
-                  </IconButton>
-                </TableCell>
+              <TableRow key={user.id}>
+                {columns.map((column) => (
+                  <TableCell key={column}>
+                    {column === "verified" ? (
+                      <Checkbox checked={user[column]} disabled />
+                    ) : (
+                      user[column]
+                    )}
+                  </TableCell>
+                ))}
               </TableRow>
             ))}
           </TableBody>
         </Table>
       </TableContainer>
 
-      {/* Pagination */}
+      {/* 📌 Pagination */}
       <TablePagination
         component="div"
         count={filteredUsers.length}
         page={page}
         rowsPerPage={rowsPerPage}
-        onPageChange={(e, newPage) => setPage(newPage)}
-        onRowsPerPageChange={(e) => setRowsPerPage(parseInt(e.target.value, 10))}
+        onPageChange={handleChangePage}
+        onRowsPerPageChange={handleChangeRowsPerPage}
       />
 
-      {/* Popper Filter Menu */}
-      <Popper open={Boolean(anchorEl)} anchorEl={anchorEl} placement="bottom-start">
-        <ClickAwayListener onClickAway={handleClickAway}>
-          <Box sx={{ backgroundColor: "white", boxShadow: 3, padding: 2, minWidth: 200 }}>
-            <h6>Filter {filterColumn}</h6>
-            <TextField
-              fullWidth
-              variant="outlined"
-              size="small"
-              placeholder="Search..."
-              onChange={(e) => setSearchQuery(e.target.value)}
-            />
-            <Box sx={{ maxHeight: 150, overflowY: "auto", marginTop: 1 }}>
-              {Array.from(new Set(usersData.map((user) => user[filterColumn])))
-                .filter((value) => value.toLowerCase().includes(searchQuery.toLowerCase()))
-                .map((value) => (
-                  <FormControlLabel
-                    key={value}
-                    control={
-                      <Checkbox
-                        checked={filters[filterColumn].includes(value)}
-                        onChange={() => handleFilterChange(value)}
-                      />
-                    }
-                    label={value}
-                  />
-                ))}
-            </Box>
-          </Box>
-        </ClickAwayListener>
-      </Popper>
+      {/* 📌 Column Filter Popper */}
+      <Menu anchorEl={anchorEl} open={Boolean(anchorEl)} onClose={() => setAnchorEl(null)}>
+        {filterColumn &&
+          Array.from(new Set(usersData.map((user) => user[filterColumn])))
+            .filter((value) => value && value.toLowerCase().includes(searchQuery.toLowerCase())) // ✅ Ensure value is defined
+            .map((value) => (
+              <MenuItem key={value} onClick={() => handleFilterChange(value)}>
+                <Checkbox checked={filters[filterColumn]?.includes(value) || false} />
+                {value}
+              </MenuItem>
+            ))}
+      </Menu>
     </Paper>
   );
 };
