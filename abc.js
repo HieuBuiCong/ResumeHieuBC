@@ -15,32 +15,27 @@ import {
   TablePagination,
   InputAdornment,
   Button,
-  Avatar,
-  Tooltip,
   List,
   ListItem,
   ListItemIcon,
   ListItemText,
+  TableSortLabel
 } from "@mui/material";
 import FilterListIcon from "@mui/icons-material/FilterList";
 import SearchIcon from "@mui/icons-material/Search";
-import MoreVertIcon from "@mui/icons-material/MoreVert";
-import EditIcon from "@mui/icons-material/Edit";
-import DeleteIcon from "@mui/icons-material/Delete";
-import CheckCircleIcon from "@mui/icons-material/CheckCircle";
 import ClearIcon from "@mui/icons-material/Clear";
 
 // ✅ Sample Data
 const usersData = [
-  { id: 1, name: "Billy Braun", company: "White, Cassin and Goldner", role: "UI Designer", verified: false, status: "Banned", avatar: "https://i.pravatar.cc/40?img=1" },
-  { id: 2, name: "Cheryl Romaguera", company: "Weimann LLC", role: "UI Designer", verified: false, status: "Active", avatar: "https://i.pravatar.cc/40?img=2" },
-  { id: 3, name: "Betty Hammes", company: "Waelchi – VonRueden", role: "UI Designer", verified: true, status: "Active", avatar: "https://i.pravatar.cc/40?img=3" },
-  { id: 4, name: "Steve Welch", company: "Turcotte - Runolfsson", role: "Front End Developer", verified: false, status: "Banned", avatar: "https://i.pravatar.cc/40?img=4" },
-  { id: 5, name: "Willis Ankunding", company: "Streich Group", role: "UI Designer", verified: false, status: "Active", avatar: "https://i.pravatar.cc/40?img=5" }
+  { id: 1, name: "Adam Trantow", company: "Mohr, Langworth and Hills", role: "UI Designer", status: "Active" },
+  { id: 2, name: "Angel Rolfson-Kulas", company: "Koch and Sons", role: "UI Designer", status: "Active" },
+  { id: 3, name: "Betty Hammes", company: "Waelchi – VonRueden", role: "UI Designer", status: "Active" },
+  { id: 4, name: "Billy Braun", company: "White, Cassin and Goldner", role: "UI Designer", status: "Banned" },
+  { id: 5, name: "Billy Stoltenberg", company: "Medhurst, Moore and Franey", role: "Leader", status: "Banned" }
 ];
 
 // ✅ Table Columns
-const columns = ["name", "company", "role", "verified", "status"];
+const columns = ["id", "name", "company", "role", "status"];
 
 const UserTable = () => {
   const [searchQuery, setSearchQuery] = useState("");
@@ -48,23 +43,14 @@ const UserTable = () => {
   const [anchorEl, setAnchorEl] = useState(null);
   const [filterColumn, setFilterColumn] = useState("");
   const [filterSearch, setFilterSearch] = useState("");
-  const [menuAnchor, setMenuAnchor] = useState(null);
-  const [selectedUser, setSelectedUser] = useState(null);
   const [page, setPage] = useState(0);
   const [rowsPerPage, setRowsPerPage] = useState(5);
+  const [sortColumn, setSortColumn] = useState(null);
+  const [sortOrder, setSortOrder] = useState("asc");
 
   // ✅ Global Search
-  const handleSearchChange = (e) => setSearchQuery(e.target.value);
-
-  // ✅ Open Three-Dot Menu
-  const handleMenuOpen = (event, user) => {
-    setMenuAnchor(event.currentTarget);
-    setSelectedUser(user);
-  };
-
-  const handleMenuClose = () => {
-    setMenuAnchor(null);
-    setSelectedUser(null);
+  const handleSearchChange = (e) => {
+    setSearchQuery(e.target.value);
   };
 
   // ✅ Open Filter Menu
@@ -114,10 +100,16 @@ const UserTable = () => {
         .join(" ")
         .toLowerCase()
         .includes(searchQuery.toLowerCase())
-    );
+    )
+    .sort((a, b) => {
+      if (!sortColumn) return 0;
+      return sortOrder === "asc"
+        ? a[sortColumn].toString().localeCompare(b[sortColumn].toString())
+        : b[sortColumn].toString().localeCompare(a[sortColumn].toString());
+    });
 
   return (
-    <Paper sx={{ width: "100%", overflow: "hidden", p: 2 }}>
+    <Paper sx={{ width: "100%", overflow: "hidden", p: 3, borderRadius: 3, boxShadow: 3 }}>
       {/* 🔍 Global Search */}
       <TextField
         label="Search..."
@@ -135,39 +127,44 @@ const UserTable = () => {
         }}
       />
 
-      <TableContainer>
-        <Table>
+      <TableContainer component={Paper} sx={{ borderRadius: 2 }}>
+        <Table sx={{ minWidth: 650 }} stickyHeader>
           {/* 🏷 Table Head with Filters */}
           <TableHead>
-            <TableRow>
+            <TableRow sx={{ backgroundColor: "#f4f4f4" }}>
               {columns.map((column) => (
-                <TableCell key={column}>
-                  <span style={{ fontWeight: "bold" }}>{column.toUpperCase()}</span>
+                <TableCell key={column} sx={{ fontWeight: "bold" }}>
+                  <TableSortLabel
+                    active={sortColumn === column}
+                    direction={sortColumn === column ? sortOrder : "asc"}
+                    onClick={() => {
+                      setSortOrder(sortColumn === column && sortOrder === "asc" ? "desc" : "asc");
+                      setSortColumn(column);
+                    }}
+                  >
+                    {column.toUpperCase()}
+                  </TableSortLabel>
                   <IconButton onClick={(e) => handleOpenFilter(e, column)}>
                     <FilterListIcon />
                   </IconButton>
                 </TableCell>
               ))}
-              <TableCell align="right">Actions</TableCell>
             </TableRow>
           </TableHead>
 
           {/* 🏷 Table Body */}
           <TableBody>
-            {filteredUsers.slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage).map((user) => (
-              <TableRow key={user.id}>
+            {filteredUsers.slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage).map((user, index) => (
+              <TableRow
+                key={user.id}
+                sx={{
+                  backgroundColor: index % 2 === 0 ? "#f9f9f9" : "#ffffff",
+                  "&:hover": { backgroundColor: "#e3f2fd" },
+                }}
+              >
                 {columns.map((column) => (
-                  <TableCell key={column}>
-                    {column === "verified"
-                      ? user.verified && <CheckCircleIcon sx={{ color: "green" }} />
-                      : user[column]}
-                  </TableCell>
+                  <TableCell key={column}>{user[column]}</TableCell>
                 ))}
-                <TableCell align="right">
-                  <IconButton onClick={(e) => handleMenuOpen(e, user)}>
-                    <MoreVertIcon />
-                  </IconButton>
-                </TableCell>
               </TableRow>
             ))}
           </TableBody>
@@ -182,6 +179,7 @@ const UserTable = () => {
         rowsPerPage={rowsPerPage}
         onPageChange={handleChangePage}
         onRowsPerPageChange={handleChangeRowsPerPage}
+        rowsPerPageOptions={[5, 10, 25, 50, 100]} // ✅ Includes 5
       />
 
       {/* 📌 Column Filter Popper */}
@@ -221,18 +219,6 @@ const UserTable = () => {
         <Button fullWidth onClick={clearFilter} startIcon={<ClearIcon />} sx={{ mt: 1 }}>
           Clear Filter
         </Button>
-      </Menu>
-
-      {/* 📌 Three-Dot Menu */}
-      <Menu anchorEl={menuAnchor} open={Boolean(menuAnchor)} onClose={handleMenuClose}>
-        <MenuItem>
-          <EditIcon sx={{ marginRight: 1 }} />
-          Edit
-        </MenuItem>
-        <MenuItem sx={{ color: "red" }}>
-          <DeleteIcon sx={{ marginRight: 1 }} />
-          Delete
-        </MenuItem>
       </Menu>
     </Paper>
   );
