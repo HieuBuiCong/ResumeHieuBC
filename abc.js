@@ -1,82 +1,160 @@
-import React, { useState } from 'react';
-import { Table, Form, Dropdown, Button } from 'react-bootstrap';
-import { FaCheckCircle, FaEdit, FaTrash } from 'react-icons/fa';
+import React, { useState } from "react";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableContainer,
+  TableHead,
+  TableRow,
+  Paper,
+  Checkbox,
+  Avatar,
+  IconButton,
+  Menu,
+  MenuItem,
+  TextField,
+  TablePagination,
+  InputAdornment,
+} from "@mui/material";
+import { FaCheckCircle, FaEdit, FaTrash, FaEllipsisV } from "react-icons/fa";
+import SearchIcon from "@mui/icons-material/Search";
 
 const usersData = [
   { id: 1, name: "Adam Trantow", company: "Mohr, Langworth and Hills", role: "UI Designer", verified: true, status: "Active", avatar: "https://i.pravatar.cc/40?img=1" },
   { id: 2, name: "Angel Rolfson-Kulas", company: "Koch and Sons", role: "UI Designer", verified: true, status: "Active", avatar: "https://i.pravatar.cc/40?img=2" },
   { id: 3, name: "Betty Hammes", company: "Waelchi – VonRueden", role: "UI Designer", verified: true, status: "Active", avatar: "https://i.pravatar.cc/40?img=3" },
   { id: 4, name: "Billy Braun", company: "White, Cassin and Goldner", role: "UI Designer", verified: false, status: "Banned", avatar: "https://i.pravatar.cc/40?img=4" },
-  { id: 5, name: "Billy Stoltenberg", company: "Medhurst, Moore and Franey", role: "Leader", verified: false, status: "Banned", avatar: "https://i.pravatar.cc/40?img=5" }
+  { id: 5, name: "Billy Stoltenberg", company: "Medhurst, Moore and Franey", role: "Leader", verified: false, status: "Banned", avatar: "https://i.pravatar.cc/40?img=5" },
 ];
 
 const UserTable = () => {
-  const [search, setSearch] = useState('');
-  const filteredUsers = usersData.filter(user =>
-    user.name.toLowerCase().includes(search.toLowerCase())
+  // States for filtering
+  const [search, setSearch] = useState("");
+  const [anchorEl, setAnchorEl] = useState(null);
+  const [selectedUser, setSelectedUser] = useState(null);
+  const [filters, setFilters] = useState({ name: "", company: "", role: "", status: "" });
+  const [page, setPage] = useState(0);
+  const [rowsPerPage, setRowsPerPage] = useState(5);
+
+  // Open menu for row actions
+  const handleMenuOpen = (event, user) => {
+    setAnchorEl(event.currentTarget);
+    setSelectedUser(user);
+  };
+  const handleMenuClose = () => setAnchorEl(null);
+
+  // Handle filter change
+  const handleFilterChange = (event, key) => {
+    setFilters({ ...filters, [key]: event.target.value });
+  };
+
+  // Apply filters
+  const filteredUsers = usersData.filter((user) =>
+    Object.keys(filters).every(
+      (key) =>
+        filters[key] === "" || user[key].toLowerCase().includes(filters[key].toLowerCase())
+    )
   );
 
+  // Pagination handlers
+  const handleChangePage = (event, newPage) => setPage(newPage);
+  const handleChangeRowsPerPage = (event) => {
+    setRowsPerPage(parseInt(event.target.value, 10));
+    setPage(0);
+  };
+
   return (
-    <div className="container mt-4">
-      <h4 className="mb-3">Users</h4>
-      <div className="d-flex justify-content-between mb-3">
-        <Form.Control
-          type="text"
-          placeholder="Search user..."
-          className="w-25"
-          onChange={(e) => setSearch(e.target.value)}
-        />
-        <Button variant="primary">+ New User</Button>
+    <Paper sx={{ padding: 3, boxShadow: 3 }}>
+      <h3>Users</h3>
+
+      {/* Filters */}
+      <div className="d-flex gap-2 mb-3">
+        {["name", "company", "role", "status"].map((key) => (
+          <TextField
+            key={key}
+            label={`Filter ${key.charAt(0).toUpperCase() + key.slice(1)}`}
+            variant="outlined"
+            size="small"
+            value={filters[key]}
+            onChange={(event) => handleFilterChange(event, key)}
+            InputProps={{
+              startAdornment: (
+                <InputAdornment position="start">
+                  <SearchIcon />
+                </InputAdornment>
+              ),
+            }}
+          />
+        ))}
       </div>
 
-      <Table striped bordered hover responsive>
-        <thead>
-          <tr>
-            <th><Form.Check type="checkbox" /></th>
-            <th>Name</th>
-            <th>Company</th>
-            <th>Role</th>
-            <th>Verified</th>
-            <th>Status</th>
-            <th>Actions</th>
-          </tr>
-        </thead>
-        <tbody>
-          {filteredUsers.map(user => (
-            <tr key={user.id}>
-              <td><Form.Check type="checkbox" /></td>
-              <td>
-                <img src={user.avatar} alt="avatar" className="rounded-circle me-2" width="30" />
-                {user.name}
-              </td>
-              <td>{user.company}</td>
-              <td>{user.role}</td>
-              <td className="text-center">
-                {user.verified ? <FaCheckCircle className="text-success" /> : "-"}
-              </td>
-              <td>
-                <span className={`badge ${user.status === "Active" ? "bg-success" : "bg-danger"}`}>
-                  {user.status}
-                </span>
-              </td>
-              <td>
-                <Dropdown>
-                  <Dropdown.Toggle variant="light" size="sm">
-                    •••
-                  </Dropdown.Toggle>
-                  <Dropdown.Menu>
-                    <Dropdown.Item href="#"><FaEdit className="me-2" /> Edit</Dropdown.Item>
-                    <Dropdown.Item href="#" className="text-danger">
-                      <FaTrash className="me-2" /> Delete
-                    </Dropdown.Item>
-                  </Dropdown.Menu>
-                </Dropdown>
-              </td>
-            </tr>
-          ))}
-        </tbody>
-      </Table>
-    </div>
+      {/* Table */}
+      <TableContainer>
+        <Table>
+          <TableHead>
+            <TableRow>
+              <TableCell padding="checkbox">
+                <Checkbox />
+              </TableCell>
+              <TableCell>Name</TableCell>
+              <TableCell>Company</TableCell>
+              <TableCell>Role</TableCell>
+              <TableCell>Verified</TableCell>
+              <TableCell>Status</TableCell>
+              <TableCell align="right">Actions</TableCell>
+            </TableRow>
+          </TableHead>
+          <TableBody>
+            {filteredUsers.slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage).map((user) => (
+              <TableRow key={user.id} hover>
+                <TableCell padding="checkbox">
+                  <Checkbox />
+                </TableCell>
+                <TableCell>
+                  <Avatar src={user.avatar} sx={{ width: 30, height: 30, marginRight: 1 }} />
+                  {user.name}
+                </TableCell>
+                <TableCell>{user.company}</TableCell>
+                <TableCell>{user.role}</TableCell>
+                <TableCell align="center">
+                  {user.verified ? <FaCheckCircle className="text-success" /> : "-"}
+                </TableCell>
+                <TableCell>
+                  <span className={`badge ${user.status === "Active" ? "bg-success" : "bg-danger"}`}>
+                    {user.status}
+                  </span>
+                </TableCell>
+                <TableCell align="right">
+                  <IconButton size="small" onClick={(e) => handleMenuOpen(e, user)}>
+                    <FaEllipsisV />
+                  </IconButton>
+                </TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
+      </TableContainer>
+
+      {/* Pagination */}
+      <TablePagination
+        component="div"
+        count={filteredUsers.length}
+        page={page}
+        rowsPerPage={rowsPerPage}
+        onPageChange={handleChangePage}
+        onRowsPerPageChange={handleChangeRowsPerPage}
+      />
+
+      {/* Row Action Menu */}
+      <Menu anchorEl={anchorEl} open={Boolean(anchorEl)} onClose={handleMenuClose}>
+        <MenuItem>
+          <FaEdit className="me-2 text-primary" /> Edit
+        </MenuItem>
+        <MenuItem className="text-danger">
+          <FaTrash className="me-2 text-danger" /> Delete
+        </MenuItem>
+      </Menu>
+    </Paper>
   );
 };
 
