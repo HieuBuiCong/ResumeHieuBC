@@ -1,44 +1,30 @@
-// 1) States & Handlers
-const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+import { Button } from "@mui/material";
+import { saveAs } from "file-saver";
+import Papa from "papaparse";
 
-function handleDeleteClick(user) {
-  setSelectedUser(user);
-  setDeleteDialogOpen(true);
-  handleMenuClose(); 
-}
+// ✅ Export function
+const handleExportCSV = () => {
+  const csvData = usersData.map((user) => ({
+    ID: user.id,
+    Name: user.name,
+    Email: user.email,
+    Role: user.role,
+    Department: user.department,
+  }));
 
-function handleConfirmDelete() {
-  console.log("Deleting user:", selectedUser);
-  setDeleteDialogOpen(false);
-  setSelectedUser(null);
-  // await axios.delete(...) or your delete logic
-}
+  const csv = Papa.unparse(csvData); // Convert data to CSV format
 
-function handleCancelDelete() {
-  setDeleteDialogOpen(false);
-  setSelectedUser(null);
-}
+  // Create Blob and trigger download
+  const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+  saveAs(blob, "user_data.csv");
+};
 
-// 2) Three-dot menu
-<Menu anchorEl={menuAnchor} ...>
-  <MenuItem onClick={() => handleEditClick(selectedUser)}>Edit</MenuItem>
-  <MenuItem onClick={() => handleDeleteClick(selectedUser)} sx={{ color: 'red' }}>
-    Delete
-  </MenuItem>
-</Menu>
-
-// 3) Deletion Confirm Dialog
-<Dialog open={deleteDialogOpen} onClose={handleCancelDelete}>
-  <DialogTitle>Confirm Deletion</DialogTitle>
-  <DialogContent>
-    <DialogContentText>
-      Are you sure you want to delete user: <strong>{selectedUser?.name}</strong>?
-    </DialogContentText>
-  </DialogContent>
-  <DialogActions>
-    <Button onClick={handleCancelDelete}>No</Button>
-    <Button onClick={handleConfirmDelete} variant="contained" color="error">
-      Yes, Delete
-    </Button>
-  </DialogActions>
-</Dialog>
+// ✅ Add this button to your table component (above TableContainer)
+<Button
+  variant="contained"
+  color="primary"
+  onClick={handleExportCSV}
+  sx={{ mb: 2 }}
+>
+  Export to CSV
+</Button>
