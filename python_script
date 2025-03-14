@@ -1,0 +1,28 @@
+import os
+import pandas as pd
+
+def convert_xls_to_xlsx(folder_path):
+    for file_name in os.listdir(folder_path):
+        if file_name.endswith('.xls'):
+            file_path = os.path.join(folder_path, file_name)
+            new_file_path = os.path.splitext(file_path)[0] + '.xlsx'
+
+            try:
+                xls = pd.ExcelFile(file_path, engine='xlrd')
+
+                with pd.ExcelWriter(new_file_path, engine='openpyxl') as writer:
+                    for sheet_name in xls.sheet_names:
+                        df = xls.parse(sheet_name, header=None)  # Keep original headers
+                        df.to_excel(writer, sheet_name=sheet_name, index=False, header=False)  # Keep format
+
+                print(f"Converted {file_name} to {os.path.basename(new_file_path)} with original sheet structure.")
+
+            except Exception as e:
+                print(f"Error converting {file_name}: {e}")
+
+
+# Set your folder path
+folder_path = r'C:\Users\HB6182\OneDrive - Hitachi Energy\Desktop\abcd'
+
+# Convert files
+convert_xls_to_xlsx(folder_path)
