@@ -1,177 +1,200 @@
-return (
-    <Paper
-      sx={{
-        width: "700px",
-        overflow: "hidden",
-        p: 2,
-        borderRadius: "12px",
-        boxShadow: "0 2px 10px rgba(0,0,0,0.1)",
-        backgroundColor: "#fff",
-        backdropFilter: "blur(10px)",
-      }}
-    >
-      {/* ✅ Table Header (Title + Add New Button) */}
-      <Box
-        sx={{
-          display: "flex",
-          justifyContent: "space-between",
-          alignItems: "center",
-          mb: 2,
-        }}
-      >
-        <Typography variant="h6" sx={{ fontWeight: "bold", color: "text.primary" }}>
-          {title}
-        </Typography>
+// ✅ Table Columns
+const columns = ["task_category_id", "question_name"];
 
-        {/* Optional Register Button Component */}
-        {RegisterComponent && <RegisterComponent />}
-      </Box>
+const TaskQuestionTable = ({selectedTaskCategoryForQuestion}) => {
+    const [searchQuery, setSearchQuery] = useState("");
+    const [filters, setFilters] = useState({});
+    const [anchorEl, setAnchorEl] = useState(null);
+    const [filterColumn, setFilterColumn] = useState("");
+    const [filterSearch, setFilterSearch] = useState("");
+    const [page, setPage] = useState(0);
+    const [rowsPerPage, setRowsPerPage] = useState(5);
 
-      {/* 🔍 Search Bar & Filters */}
-      <Box
-        sx={{
-          display: "flex",
-          justifyContent: "space-between",
-          alignItems: "center",
-          gap: 2,
-          mb: 2,
-        }}
-      >
-        <TextField
-          placeholder={`Search ${title}...`}
-          variant="outlined"
-          sx={{
-            maxWidth: "250px",
-            borderRadius: "8px",
-            backgroundColor: "#fff",
-            boxShadow: "0 1px 5px rgba(0,0,0,0.1)",
-            "& .MuiOutlinedInput-root": {
-              borderRadius: "8px",
-              "& fieldset": { borderColor: "#ddd" },
-              "&:hover fieldset": { borderColor: "#bbb" },
-              "&.Mui-focused fieldset": { borderColor: "#1976d2" },
-            },
-          }}
-          value={searchQuery}
-          onChange={handleSearchChange}
-          InputProps={{
-            startAdornment: (
-              <InputAdornment position="start">
-                <SearchIcon sx={{ color: "#999" }} />
-              </InputAdornment>
-            ),
-          }}
-        />
-      </Box>
+    const [taskQuestionData, setTaskQuestionData] = useState([]);
+    const [loading, setLoading] = useState(true);
+    const [error, setError] = useState(null);
 
-      {/* ✅ Table Content */}
-      {loading ? (
-        <Box sx={{ textAlign: "center", mt: 2 }}>
-          <CircularProgress />
-        </Box>
-      ) : error ? (
-        <Typography color="error" sx={{ fontSize: "18px", fontWeight: "bold", textAlign: "center" }}>
-          {error}
-        </Typography>
-      ) : (
-        <>
-          <TableContainer>
-            <Table>
-              {/* ✅ Table Head */}
-              <TableHead>
-                <TableRow>
-                  {columns.map((column) => (
-                    <TableCell key={column}>
-                      <span style={{ fontWeight: "bold", fontSize: "0.8rem" }}>
-                        {column[0].toUpperCase() + column.slice(1)}
-                      </span>
-                      <IconButton onClick={(e) => handleFilterChange(column)}>
-                        <FilterListIcon />
-                      </IconButton>
-                    </TableCell>
-                  ))}
-                  <TableCell align="right">Actions</TableCell>
-                </TableRow>
-              </TableHead>
+    // 💕🆕 NEW: Three-dot Menu States
+    const [menuAnchor, setMenuAnchor] = useState(null);
+    const [selectedTaskQuestion, setSelectedTaskQuestion] = useState(null);
 
-              {/* ✅ Table Body */}
-              <TableBody>
-                {data.slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage).map((row) => (
-                  <TableRow
-                    key={row.id}
-                    hover
-                    sx={{
-                      cursor: "pointer",
-                      backgroundColor: selectedRow?.id === row.id ? "#f0f0f0" : "inherit",
-                    }}
-                    onClick={() => handleRowSelection(row)}
-                  >
-                    {columns.map((column) => (
-                      <TableCell key={column} sx={{ fontSize: "0.9rem" }}>
-                        {editingRowId === row.id ? (
-                          <TextField
-                            variant="outlined"
-                            size="small"
-                            value={editValues[column] || ""}
-                            onChange={(e) => setEditValues((prev) => ({ ...prev, [column]: e.target.value }))}
-                          />
-                        ) : (
-                          <Tooltip title={row[column]} arrow>
-                            <span>{row[column]}</span>
-                          </Tooltip>
-                        )}
-                      </TableCell>
-                    ))}
+    // 🦤 NEW: Row Editing State
+    const [editingRowId, setEditingRowId] = useState(null);
+    const [editValues, setEditValues] = useState({});
+    
+    // 🤣😂 NEW: Delete confirmation Dialog Open
+    const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
 
-                    {/* ✅ Actions Column */}
-                    <TableCell align="right">
-                      {editingRowId === row.id ? (
-                        <Box sx={{ display: "flex", gap: 1 }}>
-                          <Button variant="contained" onClick={handleSaveClick}>
-                            Save
-                          </Button>
-                          <Button variant="contained" color="error" onClick={() => setEditingRowId(null)}>
-                            Cancel
-                          </Button>
-                        </Box>
-                      ) : (
-                        <IconButton onClick={(e) => handleEditClick(row)}>
-                          <MoreVertIcon />
-                        </IconButton>
-                      )}
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </TableContainer>
+    // Dealing with Error of deleting, edit, changepassword
+    const [localError, setLocalError] = useState(null);
+    const [success, setSuccess] = useState(false);
+    const [successMessage, setSuccessMessage] = useState("");
 
-          {/* ✅ Pagination */}
-          <StyledTablePagination
-            component="div"
-            count={data.length}
-            page={page}
-            rowsPerPage={rowsPerPage}
-            onPageChange={handleChangePage}
-            onRowsPerPageChange={handleChangeRowsPerPage}
-            rowsPerPageOptions={[5, 10, 15, 20]}
-          />
-        </>
-      )}
+    // Load the task category data when mounted
+    useEffect(() => {
+        const fetchData = async () => {
+            try {
+                setLoading(true);
+                const data = await getTaskQuestionData();
+                const filteredData = data.filter(question => question.task_category_id === selectedTaskCategoryForQuestion.task_category_id);
+                setTaskQuestionData(filteredData);
+                console.log(filteredData); // Log the filtered data instead
+            } catch (error) {
+                setError(error.message || "Failed to load data");
+                console.error(error); // Log the error for debugging
+            } finally {
+                setLoading(false);
+            }
+        };
+        fetchData();
+    }, [selectedTaskCategoryForQuestion]);
 
-      {/* ✅ Snackbars */}
-      <Portal>
-        <Snackbar open={!!localError} autoHideDuration={4000} onClose={() => setLocalError(null)}>
-          <Alert severity="error">{localError}</Alert>
-        </Snackbar>
-      </Portal>
-      <Portal>
-        <Snackbar open={success} autoHideDuration={4000} onClose={() => setSuccess(false)}>
-          <Alert severity="success">{successMessage}</Alert>
-        </Snackbar>
-      </Portal>
-    </Paper>
-  );
-};
+    // refresh the task category
+    const refreshTaskQuestion = async () => {
+      try {
+        setLoading(true);
+        const data = await getTaskQuestionData();
+        const filteredData = data.filter(question => question.task_category_id === selectedTaskCategoryForQuestion.task_category_id);
+        console.log(filteredData);
+        setTaskQuestionData(filteredData);
+      } catch (err) {
+        setError(err.message || "Failed to refresh taskQuestion");
+      } finally {
+        setLoading(false);
+      }
+    };
 
-export default ReusableTable;
+    // 🌑🌚🌚🌚🎯 dark mode
+    const { darkMode } = useDarkMode();
+    const theme = createTheme({
+        palette: {
+        mode: darkMode ? "dark" : "light",
+        primary: { main: darkMode ? "#90caf9" : "#1976d2" },
+        background: { default: darkMode ? "#121212" : "#f8f9fa" },
+        backgroundColor : {default: darkMode ? "rgba(33, 31, 31, 0.7)" : "rgba(255,255,255,0.7)"},
+        text: { primary: darkMode ? "#ffffff" : "#000000" },
+        },
+    });
+
+    // ✅ Global Search
+    const handleSearchChange = (e) => {
+        setSearchQuery(e.target.value);
+    };
+
+    // ✅ Open Filter Menu
+    const handleOpenFilter = (event, column) => {
+        setAnchorEl(event.currentTarget);
+        setFilterColumn(column);
+        setFilterSearch(""); // Reset dropdown search input
+    };
+
+    // ✅ Toggle Filter Selection
+    const handleFilterChange = (value) => {
+        const strValue = String(value); // ✅ Convert to string for consistency
+        setFilters((prev) => ({
+        ...prev,
+        [filterColumn]: prev[filterColumn]?.includes(strValue)
+            ? prev[filterColumn].filter((v) => v !== strValue)
+            : [...(prev[filterColumn] || []), strValue],
+        }));
+    };
+
+    // ✅ Clear Filters for a Column
+    const clearFilter = () => {
+        setFilters((prev) => {
+        const updatedFilters = { ...prev };
+        delete updatedFilters[filterColumn];
+        return updatedFilters;
+        });
+        setAnchorEl(null);
+    };
+
+    // ✅ Handle Pagination
+    const handleChangePage = (event, newPage) => setPage(newPage);
+    const handleChangeRowsPerPage = (event) => {
+        setRowsPerPage(parseInt(event.target.value, 10));
+        setPage(0);
+    };
+
+    // 💕🆕 OPEN & CLOSE 3-DOT MENU
+    const handleMenuOpen = (event, taskQuestion) => {
+        setMenuAnchor(event.currentTarget);
+        setSelectedTaskQuestion(taskQuestion);
+    };
+    const handleMenuClose = () => {
+        setMenuAnchor(null);
+        //setSelectedTaskQuestion(null);
+    };
+
+    // 🦤 NEW: Edit Row
+    const handleEditClick = (taskQuestion) => {
+        setEditingRowId(taskQuestion.task_category_question_id);
+        setEditValues({ ...taskQuestion }); // Pre-fill textfields with row data
+        console.log(editValues);
+        handleMenuClose();
+    }
+    
+    // 🦤🦤🦤🦤🦤🦤🦤🦤🦤🦤 NEW: Save Row (POST request placeholder)
+    const handleSaveClick = async (taskQuestion) => {
+        try {
+        setLoading(true);
+        await taskQuestionUpdate(selectedTaskQuestion.task_category_question_id, editValues );
+        setSuccess(true);
+        setSuccessMessage(`${selectedTaskQuestion.question_name} updated successfully`);
+        
+        } catch (err) {
+        setLocalError(err.message || "Failed to update task category");
+        } finally {
+        setLoading(false);
+        setDeleteDialogOpen(false);
+        setSelectedTaskQuestion(null);
+        setEditingRowId(null);
+        refreshTaskQuestion();
+        }
+        console.log("Updated task category:", selectedTaskQuestion);
+    }
+
+    // 🦤🦤🦤🦤🦤🦤🦤🦤🦤🦤 NEW: Delete a row with dialog
+    const handleDeleteClick = (taskQuestion) => {
+        console.log("Deleting task category:", taskQuestion);
+        setSelectedTaskQuestion(taskQuestion);
+        setDeleteDialogOpen(true);
+        handleMenuClose(); 
+    }
+
+    const handleConfirmDelete =  async(taskQuestion) => {
+        try {
+        setLoading(true);
+        await taskQuestionDelete(selectedTaskQuestion.task_category_question_id);
+        refreshTaskQuestion();
+        setSuccess(true);
+        setSuccessMessage(`${selectedTaskQuestion.question_name} deleted successfully`);
+        } catch (err) {
+        setLocalError(err.message || "Failed to delete task category");
+        } finally {
+        setLoading(false);
+        setDeleteDialogOpen(false);
+        setSelectedTaskQuestion(null);
+        setEditingRowId(null);
+        }
+        console.log("Deleted task category:", selectedTaskQuestion);
+    }
+
+    function handleCancelDelete() {
+        setDeleteDialogOpen(false);
+        setSelectedTaskQuestion(null);
+    }
+
+    // ✅ APPLY FILTER & SEARCH
+    const filteredTaskQuestion = taskQuestionData
+        .filter((taskQuestion) =>
+        Object.keys(filters).every((column) =>
+            filters[column]?.length ? filters[column].includes(String(taskQuestion[column])) : true // ✅ Convert all values to strings
+        )
+        )
+        .filter((taskQuestion) =>
+        Object.values(taskQuestion)
+            .map((v) => String(v).toLowerCase()) // ✅ Convert everything to string & lowercase before filtering
+            .join(" ")
+            .includes(searchQuery.toLowerCase())
+        );
