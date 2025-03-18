@@ -1,9 +1,21 @@
- return (
+return (
     <ThemeProvider theme={theme}>
         {loading ? (
-            <div style={{ textAlign: "center", marginTop: "20px" }}>
-                <CircularProgress />
-            </div>
+            <Paper
+                sx={{
+                width: "700px",
+                overflow: "hidden",
+                p: 2,
+                borderRadius: "12px",
+                boxShadow: "0 2px 10px rgba(0,0,0,0.1)",
+                backgroundColor: theme.palette.backgroundColor.default,
+                backdropFilter: "blur(10px)",
+                }}
+                >
+                <div style={{ textAlign: "center", marginTop: "20px" }}>
+                    <CircularProgress />
+                </div>
+            </Paper>
         ) : error ? (
             <p className="display-4 text-danger fw-bold" style={{fontSize: "30px"}}>😒😒{error}😒😒</p>
         ) : (
@@ -20,7 +32,7 @@
                     }}
                 >
                     <Typography variant="h6" sx={{ fontWeight: "bold", color: "text.primary", marginBottom: "5px" }}>
-                        Task Category
+                        Questions for Task Category : {selectedTaskCategoryForQuestion.task_category_id}
                     </Typography>
                    {/* ✅ Container for Search Bar & Register Button */}
                     <Box 
@@ -60,8 +72,8 @@
                                 ),
                             }}
                         />
-                        {/* ➕ Register New Task Category Button (aligned to the right) */}
-                        <TaskCategoryRegisterForm refreshTaskCategory={refreshTaskCategory} setLocalError={setLocalError} setSuccess={setSuccess} setSuccessMessage={setSuccessMessage} />
+                        {/* ➕ Register New Task Question Button (aligned to the right) */}
+                        <TaskQuestionRegisterForm refreshTaskQuestion={refreshTaskQuestion} setLocalError={setLocalError} setSuccess={setSuccess} setSuccessMessage={setSuccessMessage} />
                     </Box>
 
                     <TableContainer className="pt-3">
@@ -82,24 +94,22 @@
 
                             {/*🦤🦤🦤🦤🦤🦤🦤🦤 TABLE BODY */}
                             <TableBody>
-                                {filteredTaskCategory.slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage).map((taskCategory) => (
+                                {filteredTaskQuestion.slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage).map((taskQuestion) => (
                                     <TableRow
-                                        key={taskCategory.task_category_id}
+                                        key={taskQuestion.task_category_question_id}
                                         hover
                                         sx={{
                                         height: "20px",
                                         cursor: "pointer",
                                         transition: "background 0.2s ease-in-out",
                                         "&:hover": { backgroundColor: "#f5f5f5" },
-                                        backgroundColor: selectedTaskCategoryForQuestion?.task_category_id === taskCategory.task_category_id ? "#f5f5f5" : "inherit",
                                         }}
-                                        onClick= {() => setSelectedTaskCategoryForQuestion(taskCategory)} //🆕 Select category on row click
                                     >
                                         {columns.map((column) => (
                                         <TableCell key={column} sx={{ fontSize: "0.9rem", maxWidth: "150px", overflow: "hidden", whiteSpace: "nowrap", textOverflow: "ellipsis" }}>
                                             {column === "task_category_id" ? (
-                                            <span>{taskCategory[column]}</span>
-                                            ) : editingRowId === taskCategory.task_category_id ? (
+                                            <span>{taskQuestion[column]}</span>
+                                            ) : editingRowId === taskQuestion.task_category_question_id ? (
                                                 <TextField
                                                     variant="outlined"
                                                     size="small"
@@ -109,17 +119,17 @@
                                                     }
                                                 />
                                             ) : (
-                                                <Tooltip title={taskCategory[column]} arrow>
-                                                <span>{taskCategory[column]}</span>
+                                                <Tooltip title={taskQuestion[column]} arrow>
+                                                <span>{taskQuestion[column]}</span>
                                                 </Tooltip>
                                             )}
                                         </TableCell>
                                         ))}
                                         {/* ACTIONS: If editing => show Save button, else show 3-dot */}
                                         <TableCell align="right">
-                                        {editingRowId === taskCategory.task_category_id ? (
+                                        {editingRowId === taskQuestion.task_category_question_id ? (
                                             <Box sx= {{display: 'flex', gap: 1}}>
-                                            <Button variant="contained" onClick={() => handleSaveClick(taskCategory.task_category_id)}>
+                                            <Button variant="contained" onClick={() => handleSaveClick(taskQuestion.task_category_question_id)}>
                                                 Save
                                             </Button>
                                             <Button variant="contained" color="error" onClick={() => setEditingRowId(null)}>
@@ -127,7 +137,7 @@
                                             </Button>
                                             </Box>
                                         ) : (
-                                            <IconButton onClick={(e) => handleMenuOpen(e, taskCategory)}>
+                                            <IconButton onClick={(e) => handleMenuOpen(e, taskQuestion)}>
                                             <MoreVertIcon />
                                             </IconButton>
                                         )}
@@ -141,7 +151,7 @@
                     {/* 📌 Pagination */}
                     <StyledTablePagination
                         component="div"
-                        count={filteredTaskCategory.length}
+                        count={filteredTaskQuestion.length}
                         page={page}
                         rowsPerPage={rowsPerPage}
                         onPageChange={handleChangePage}
@@ -192,7 +202,7 @@
                         }}
                     >
                         {filterColumn &&
-                        Array.from(new Set(taskCategoryData.map((taskCategory) => String(taskCategory[filterColumn]))))
+                        Array.from(new Set(taskQuestionData.map((taskQuestion) => String(taskQuestion[filterColumn]))))
                             .filter((value) => value.toLowerCase().includes(filterSearch.toLowerCase()))
                             .map((value) => (
                             <ListItem
@@ -239,11 +249,11 @@
 
                     {/* 💕🆕 3-DOT MENU (EDIT / DELETE) */}
                     <Menu anchorEl={menuAnchor} open={Boolean(menuAnchor)} onClose={handleMenuClose}>
-                        <MenuItem onClick={() => handleEditClick(selectedTaskCategory)}>
+                        <MenuItem onClick={() => handleEditClick(selectedTaskQuestion)}>
                             <EditIcon sx={{ marginRight: 1 }} />
                             Edit
                         </MenuItem>
-                        <MenuItem onClick={() => handleDeleteClick(selectedTaskCategory)} sx={{ color: "red" }}>
+                        <MenuItem onClick={() => handleDeleteClick(selectedTaskQuestion)} sx={{ color: "red" }}>
                             <DeleteIcon sx={{ marginRight: 1 }} />
                             Delete
                         </MenuItem>
@@ -259,7 +269,7 @@
                         </DialogContent>
                         <DialogActions>
                             <Button onClick={handleCancelDelete}>No</Button>
-                            <Button onClick={() => handleConfirmDelete(selectedTaskCategory)} variant="contained" color="error">
+                            <Button onClick={() => handleConfirmDelete(selectedTaskQuestion)} variant="contained" color="error">
                                 Yes
                             </Button>
                         </DialogActions>
@@ -302,3 +312,4 @@
         )}
     </ThemeProvider>
   );
+};
