@@ -9,22 +9,13 @@ import {
   CircularProgress,
   Snackbar,
   Alert,
-  MenuItem,
-  useTheme,
-  useMediaQuery,
   Grid,
   Box,
-  Typography,
   Portal,
 } from "@mui/material";
-import {
-  Business,
-} from "@mui/icons-material";
 import AddIcon from "@mui/icons-material/Add";
 import { keyframes } from "@emotion/react";
-
 import { taskCategoryRegister } from "../../services/taskCategoryService";
-
 
 // Keyframes for sway animation
 const sway = keyframes`
@@ -33,15 +24,9 @@ const sway = keyframes`
   100% { transform: translateX(0); }
 `;
 
-const TaskCategoryRegisterForm = ({refreshTaskCategory}) => {
-  const theme = useTheme();
-  const fullScreen = useMediaQuery(theme.breakpoints.down('sm'));
-
+const TaskCategoryRegisterForm = ({ refreshTaskCategory }) => {
   const [openForm, setOpenForm] = useState(false);
-  const [formData, setFormData] = useState({
-    department_name: "",
-  });
-
+  const [formData, setFormData] = useState({ task_name: "" });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [success, setSuccess] = useState(false);
@@ -56,16 +41,14 @@ const TaskCategoryRegisterForm = ({refreshTaskCategory}) => {
     setLoading(true);
     setError(null);
     setSuccess(false);
-    console.log(formData);
 
     try {
-      // Simulate API request
       await taskCategoryRegister(formData);
       setSuccess(true);
-      refreshTaskCategory(); // 🎯 refresh the department table after update 
+      refreshTaskCategory(); // Refresh the task category table
       setOpenForm(false);
     } catch (error) {
-      setError(error?.error || "Failed to create department. Please try again.");
+      setError(error?.error || "Failed to create task category. Please try again.");
     } finally {
       setLoading(false);
     }
@@ -73,54 +56,33 @@ const TaskCategoryRegisterForm = ({refreshTaskCategory}) => {
 
   return (
     <>
-      {/* ✅ Error Snackbar */}
-        <Portal>
-            <Snackbar
-                open={!!error} // open if there is a error
-                autoHideDuration={4000}
-                onClose={() => setError(null)}
-                anchorOrigin={{ vertical: 'top', horizontal: 'right' }} // position at the top right of the screen
-                sx={{
-                position: "fixed", // ensure snack bar is fixed and unaffected by the Dialog backdrop
-                zIndex: 9999, // ensure snackbar appear above other UI element
-                animation: `${sway} 0.5s ease-in-out`, // applies sway animation to the snack bar
-                marginTop: '64px',
-                }}
-            >
-                <Alert severity="error">{error}</Alert>
-            </Snackbar>
-        </Portal>
-      {/* ✅ Success Snackbar */}
-        <Portal>
-            <Snackbar
-                open={success}
-                autoHideDuration={4000}
-                onClose={() => setSuccess(false)}
-                anchorOrigin={{ vertical: 'top', horizontal: 'right' }}
-                sx={{
-                animation: `${sway} 0.5s ease-in-out`,
-                marginTop: '64px', 
-                }}
-            >
-                <Alert severity="success">Task category created successfully!</Alert>
-            </Snackbar>
-        </Portal>
+      {/* ✅ Success & Error Snackbar */}
+      <Portal>
+        <Snackbar
+          open={!!error}
+          autoHideDuration={4000}
+          onClose={() => setError(null)}
+          anchorOrigin={{ vertical: 'top', horizontal: 'right' }}
+          sx={{ position: "fixed", zIndex: 9999, animation: `${sway} 0.5s ease-in-out`, marginTop: '64px' }}
+        >
+          <Alert severity="error">{error}</Alert>
+        </Snackbar>
+      </Portal>
 
-      {/* ✅ Department Header */}
-      <Box
-        sx={{
-          display: "flex",
-          justifyContent: "space-between",
-          alignItems: "center",
-          px: 3,
-          pb: 2,
-          width: "100%",
-          position: "sticky",  // ✅ Ensures it stays above the table
-          top: 0,  // ✅ Sticks to top within the scrollable area
-          zIndex: 2,
-        }}
-      >
+      <Portal>
+        <Snackbar
+          open={success}
+          autoHideDuration={4000}
+          onClose={() => setSuccess(false)}
+          anchorOrigin={{ vertical: 'top', horizontal: 'right' }}
+          sx={{ animation: `${sway} 0.5s ease-in-out`, marginTop: '64px' }}
+        >
+          <Alert severity="success">Task category created successfully!</Alert>
+        </Snackbar>
+      </Portal>
 
+      {/* ✅ Button positioned on the right */}
+      <Box sx={{ display: "flex", justifyContent: "flex-end", alignItems: "center" }}>
         <Button
           variant="contained"
           color="primary"
@@ -133,18 +95,15 @@ const TaskCategoryRegisterForm = ({refreshTaskCategory}) => {
           }}
           onClick={() => setOpenForm(true)}
         >
-          New task category
+          New Task Category
         </Button>
       </Box>
 
-      {/* ✅ department Form Dialog */}
-      <Dialog open={openForm} onClose={() => setOpenForm(false)} fullWidth maxWidth="sm" fullScreen={fullScreen}>
+      {/* ✅ Task Category Form Dialog */}
+      <Dialog open={openForm} onClose={() => setOpenForm(false)} fullWidth maxWidth="sm">
         <DialogTitle>Create New Task Category</DialogTitle>
         <DialogContent>
           <Grid container spacing={2} alignItems="center">
-            <Grid item>
-              <Business sx={{ color: "red" }} />
-            </Grid>
             <Grid item xs>
               <TextField
                 fullWidth
@@ -160,7 +119,7 @@ const TaskCategoryRegisterForm = ({refreshTaskCategory}) => {
           </Grid>
         </DialogContent>
         <DialogActions>
-          <Button onClick={() => setOpenForm(false)} color="secondary" sx={{ mr: 2 }}>
+          <Button onClick={() => setOpenForm(false)} color="secondary">
             Cancel
           </Button>
           <Button
@@ -168,12 +127,6 @@ const TaskCategoryRegisterForm = ({refreshTaskCategory}) => {
             color="primary"
             variant="contained"
             disabled={loading}
-            sx={{
-              backgroundColor: theme.palette.primary.main,
-              '&:hover': {
-                backgroundColor: theme.palette.primary.dark,
-              },
-            }}
           >
             {loading ? <CircularProgress size={24} color="inherit" /> : "Create"}
           </Button>
