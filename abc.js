@@ -1,84 +1,54 @@
-import { useState, useEffect } from "react";
+import React from "react";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableContainer,
+  TableHead,
+  TableRow,
+  Paper,
+  IconButton,
+  TextField,
+  TablePagination,
+  InputAdornment,
+  Box,
+  Tooltip,
+  CircularProgress,
+  Typography,
+} from "@mui/material";
 
-const useTableLogic = ({ fetchDataFunction, columns, selectionHandler }) => {
-  const [data, setData] = useState([]);
-  const [searchQuery, setSearchQuery] = useState("");
-  const [filters, setFilters] = useState({});
-  const [page, setPage] = useState(0);
-  const [rowsPerPage, setRowsPerPage] = useState(5);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
-  const [editingRowId, setEditingRowId] = useState(null);
-  const [editValues, setEditValues] = useState({});
-  const [selectedRow, setSelectedRow] = useState(null);
-  const [success, setSuccess] = useState(false);
-  const [successMessage, setSuccessMessage] = useState("");
-  const [localError, setLocalError] = useState(null);
+import FilterListIcon from "@mui/icons-material/FilterList";
+import SearchIcon from "@mui/icons-material/Search";
+import MoreVertIcon from "@mui/icons-material/MoreVert";
+import EditIcon from "@mui/icons-material/Edit";
+import DeleteIcon from "@mui/icons-material/Delete";
 
-  // Fetch data when component mounts
-  useEffect(() => {
-    const fetchData = async () => {
-      try {
-        setLoading(true);
-        const result = await fetchDataFunction();
-        setData(result);
-      } catch (err) {
-        setError(err.message || "Failed to fetch data");
-      } finally {
-        setLoading(false);
-      }
-    };
-    fetchData();
-  }, []);
+import { createTheme, ThemeProvider } from "@mui/material/styles";
+import { styled } from "@mui/system";
 
-  // Function to refresh data (used after edit/delete)
-  const refreshData = async () => {
-    try {
-      setLoading(true);
-      const result = await fetchDataFunction();
-      setData(result);
-    } catch (err) {
-      setError(err.message || "Failed to refresh data");
-    } finally {
-      setLoading(false);
-    }
-  };
+import useTableLogic from "../../hooks/useTableLogic";
+import { useDarkMode } from "../../context/DarkModeContext";
 
-  // Search Handler
-  const handleSearchChange = (e) => setSearchQuery(e.target.value);
+// ✅ Styled Pagination
+const StyledTablePagination = styled(TablePagination)(({ theme }) => ({
+  "& .MuiTablePagination-toolbar": {
+    "& p": {
+      margin: "0px",
+    },
+  },
+}));
 
-  // Pagination Handlers
-  const handleChangePage = (_, newPage) => setPage(newPage);
-  const handleChangeRowsPerPage = (event) => {
-    setRowsPerPage(parseInt(event.target.value, 10));
-    setPage(0);
-  };
-
-  // Select Row (for Task Category -> Task Questions)
-  const handleSelectRow = (row) => {
-    setSelectedRow(row);
-    selectionHandler(row);
-  };
-
-  // Edit Row
-  const handleEditClick = (row) => {
-    setEditingRowId(row[columns[0]]);
-    setEditValues({ ...row });
-  };
-
-  // Apply Filters & Search
-  const filteredData = data
-    .filter((row) =>
-      Object.values(row)
-        .map((v) => String(v).toLowerCase())
-        .join(" ")
-        .includes(searchQuery.toLowerCase())
-    );
-
-  return {
-    data: filteredData,
+const ReusableTable = ({
+  title,
+  columns,
+  fetchDataFunction,
+  selectionHandler,
+  registerFormComponent: RegisterForm,
+}) => {
+  const {
+    data,
     searchQuery,
-    setSearchQuery,
+    handleSearchChange,
     page,
     rowsPerPage,
     handleChangePage,
@@ -86,7 +56,6 @@ const useTableLogic = ({ fetchDataFunction, columns, selectionHandler }) => {
     loading,
     error,
     refreshData,
-    handleSearchChange,
     handleEditClick,
     editingRowId,
     editValues,
@@ -99,7 +68,215 @@ const useTableLogic = ({ fetchDataFunction, columns, selectionHandler }) => {
     setSuccessMessage,
     localError,
     setLocalError,
-  };
+  } = useTableLogic({ fetchDataFunction, columns, selectionHandler });
+
+  // Dark Mode
+  const { darkMode } = useDarkMode();
+  const theme = createTheme({
+    palette: {
+      mode: darkMode ? "dark" : "light",
+      primary: { main: darkMode ? "#90caf9" : "#1976d2" },
+      background: { default: darkMode ? "#121212" : "#f8f9fa" },
+      backgroundColor: {
+        default: darkMode ? "rgba(33, 31, 31, 0.7)" : "rgba(255,255,255,0.7)",
+      },
+      text: { primary: darkMode ? "#ffffff" : "#000000" },
+    },
+  });
+return (
+    <ThemeProvider theme={theme}>
+      {loading ? (
+        <Paper
+          sx={{
+            width: "700px",
+            overflow: "hidden",
+            p: 2,
+            borderRadius: "12px",
+            boxShadow: "0 2px 10px rgba(0,0,0,0.1)",
+            backgroundColor: theme.palette.backgroundColor.default,
+            backdropFilter: "blur(10px)",
+          }}
+        >
+          <div style={{ textAlign: "center", marginTop: "20px" }}>
+            <CircularProgress />
+          </div>
+        </Paper>
+      ) : error ? (
+        <Typography variant="h6" sx={{ color: "red", textAlign: "center" }}>
+          {error}
+        </Typography>
+      ) : (
+        <>
+          <Paper
+            sx={{
+              width: "700px",
+              overflow: "hidden",
+              p: 2,
+              borderRadius: "12px",
+              boxShadow: "0 2px 10px rgba(0,0,0,0.1)",
+              backgroundColor: theme.palette.backgroundColor.default,
+              backdropFilter: "blur(10px)",
+            }}
+          >
+            <Typography
+              variant="h6"
+              sx={{ fontWeight: "bold", color: "text.primary", mb: 2 }}
+            >
+              {title}
+            </Typography>
+
+            {/* 🔍 Search & Register Button */}
+            <Box
+              sx={{
+                display: "flex",
+                justifyContent: "space-between",
+                alignItems: "center",
+                mb: 2,
+                width: "100%",
+              }}
+            >
+              {/* Search Bar */}
+              <TextField
+                placeholder={`Search ${title}...`}
+                variant="outlined"
+                sx={{
+                  maxWidth: "250px",
+                  borderRadius: "8px",
+                  backgroundColor: theme.palette.backgroundColor.default,
+                  boxShadow: "0 1px 5px rgba(0,0,0,0.1)",
+                  "& .MuiOutlinedInput-root": {
+                    borderRadius: "8px",
+                    "& fieldset": { borderColor: "#ddd" },
+                    "&:hover fieldset": { borderColor: "#bbb" },
+                    "&.Mui-focused fieldset": { borderColor: "#1976d2" },
+                  },
+                }}
+                value={searchQuery}
+                onChange={handleSearchChange}
+                InputProps={{
+                  startAdornment: (
+                    <InputAdornment position="start">
+                      <SearchIcon sx={{ color: "#999" }} />
+                    </InputAdornment>
+                  ),
+                }}
+              />
+
+              {/* Register Button */}
+              {RegisterForm && (
+                <RegisterForm refreshData={refreshData} setLocalError={setLocalError} setSuccess={setSuccess} setSuccessMessage={setSuccessMessage} />
+              )}
+            </Box>
+
+            {/* Table */}
+            <TableContainer>
+              <Table>
+                {/* Table Header */}
+                <TableHead>
+                  <TableRow>
+                    {columns.map((column) => (
+                      <TableCell key={column} sx={{ fontWeight: "bold" }}>
+                        {column.toUpperCase()}
+                        <IconButton>
+                          <FilterListIcon />
+                        </IconButton>
+                      </TableCell>
+                    ))}
+                    <TableCell sx={{ fontWeight: "bold" }}>Actions</TableCell>
+                  </TableRow>
+                </TableHead>
+
+                {/* Table Body */}
+                <TableBody>
+                  {data
+                    .slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage)
+                    .map((row) => (
+                      <TableRow
+                        key={row.id}
+                        hover
+                        onClick={() => handleSelectRow(row)}
+                        sx={{
+                          cursor: "pointer",
+                          backgroundColor:
+                            selectedRow?.id === row.id ? "#f5f5f5" : "inherit",
+                        }}
+                      >
+                        {columns.map((column) => (
+                          <TableCell key={column}>
+                            {editingRowId === row.id ? (
+                              <TextField
+                                variant="outlined"
+                                size="small"
+                                value={editValues[column] || ""}
+                                onChange={(e) =>
+                                  setEditValues((prev) => ({
+                                    ...prev,
+                                    [column]: e.target.value,
+                                  }))
+                                }
+                              />
+                            ) : (
+                              <Tooltip title={row[column]} arrow>
+                                <span>{row[column]}</span>
+                              </Tooltip>
+                            )}
+                          </TableCell>
+                        ))}
+
+                        {/* Actions */}
+                        <TableCell>
+                          <IconButton onClick={() => handleEditClick(row)}>
+                            <EditIcon />
+                          </IconButton>
+                          <IconButton>
+                            <MoreVertIcon />
+                          </IconButton>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                </TableBody>
+              </Table>
+            </TableContainer>
+
+            {/* Pagination */}
+            <StyledTablePagination
+              component="div"
+              count={data.length}
+              page={page}
+              rowsPerPage={rowsPerPage}
+              onPageChange={handleChangePage}
+              onRowsPerPageChange={handleChangeRowsPerPage}
+              rowsPerPageOptions={[5, 10, 15, 20, 50]}
+            />
+          </Paper>
+
+          {/* ✅ Success Snackbar */}
+          <Portal>
+            <Snackbar
+              open={success}
+              autoHideDuration={4000}
+              onClose={() => setSuccess(false)}
+              anchorOrigin={{ vertical: "top", horizontal: "right" }}
+            >
+              <Alert severity="success">{successMessage}</Alert>
+            </Snackbar>
+          </Portal>
+
+          {/* ❌ Error Snackbar */}
+          <Portal>
+            <Snackbar
+              open={!!localError}
+              autoHideDuration={4000}
+              onClose={() => setLocalError(null)}
+              anchorOrigin={{ vertical: "top", horizontal: "right" }}
+            >
+              <Alert severity="error">{localError}</Alert>
+            </Snackbar>
+          </Portal>
+        </>
+      )}
+    </ThemeProvider>
+  );
 };
 
-export default useTableLogic;
+export default ReusableTable;
