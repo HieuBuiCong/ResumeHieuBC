@@ -4,45 +4,14 @@ import MainLayout from "../components/Layout/MainLayout";
 import TaskCategoryTable from "../components/TaskCategoryAndQuestion/TaskCategoryTable";
 import TaskQuestionTable from "../components/TaskCategoryAndQuestion/TaskQuestionTable";
 import 'bootstrap/dist/css/bootstrap.min.css';
+
 import { getTaskCategoryData } from "../services/taskCategoryService";
-import { getTaskQuestionData } from "../services/taskQuestionService";
 
 const companyLogo = "/assets/HitachiEnergyLogo.png";
 
 const TaskManagementPage = () => { 
   const { isAuthenticated } = useContext(AuthContext);
-
-  const [taskCategoryData, setTaskCategoryData] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
-
-  useEffect(() => {
-      const fetchData = async () => {
-        try {
-          setLoading(true);
-          const data = await getTaskCategoryData();
-          setTaskCategoryData(data);
-          console.log(taskCategoryData);
-        } catch (error) {
-          setError(error.message || "Failed to load data");
-        } finally {
-          setLoading(false);
-        }
-      }
-      fetchData();
-  }, []);
-
-  const refreshTaskCategory = async () => {
-    try {
-      setLoading(true);
-      const data = await getTaskCategoryData();
-      setTaskCategoryData(data);
-    } catch (err) {
-      setError(err.message || "Failed to refresh taskCategory");
-    } finally {
-      setLoading(false);
-    }
-  };
+  const [selectedTaskCategoryForQuestion, setSelectedTaskCategoryForQuestion] = useState({task_category_id: 1, task_name: ""});
 
   return (
     <MainLayout>
@@ -52,8 +21,13 @@ const TaskManagementPage = () => {
       >
         {isAuthenticated ? (
           <>
-            <div style={{ display: "flex", justifyContent: "center", gap: "20px" }}>
-                <TaskCategoryTable taskCategoryData={taskCategoryData} loading={loading} setLoading={setLoading} error={error} refreshTaskCategory={refreshTaskCategory} />
+            <div style={{ display: "flex", justifyContent: "center", gap: "40px" }}>
+                <TaskCategoryTable 
+                  selectedTaskCategoryForQuestion={selectedTaskCategoryForQuestion} setSelectedTaskCategoryForQuestion={setSelectedTaskCategoryForQuestion} // 🆕 Pass function to update selectedTask
+                />
+                <TaskQuestionTable 
+                  selectedTaskCategoryForQuestion={selectedTaskCategoryForQuestion} // 🆕 Pass state upon the selectedTask
+                />
             </div>
 
             <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginTop: "40px" }}>
