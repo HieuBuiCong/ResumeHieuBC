@@ -1,92 +1,118 @@
-const TaskCategoryRegisterForm = ({ refreshTaskCategory, setLocalError, setSuccess }) => {
-  const [openForm, setOpenForm] = useState(false);
-  const [formData, setFormData] = useState({ task_name: "" });
-  const [loading, setLoading] = useState(false);
+import React, { useContext, useState, useEffect } from "react";
+import { AuthContext } from "../context/AuthContext";
+import MainLayout from "../components/Layout/MainLayout";
+import TaskCategoryTable from "../components/TaskCategoryAndQuestion/TaskCategoryTable";
+import TaskCategoryQuestionTable from "../components/TaskCategoryAndQuestion/TaskCategoryQuestionTable";
+import 'bootstrap/dist/css/bootstrap.min.css';
+import { getTaskCategoryData } from "../services/taskCategoryService";
+import { getTaskQuestionData } from "../services/taskQuestionService";
 
-  // Handle input change
-  const handleChange = (e) => {
-    setFormData({ ...formData, [e.target.name]: e.target.value });
-  };
+const companyLogo = "/assets/HitachiEnergyLogo.png";
 
-  // Handle form submission
-  const handleSubmit = async () => {
-    setLoading(true);
-    setLocalError(null);
-    setSuccess(false);
+const TaskManagementPage = () => {
+  const { isAuthenticated } = useContext(AuthContext);
 
+  const [taskCategoryData, setTaskCategoryData] = useState([]);
+  const [taskQuestionData, setTaskQuestionData] = useState([]);
+  const [selectedCategory, setSelectedCategory] = useState(null); // 🆕 Store selected category
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+
+  // Fetch task categories
+  useEffect(() => {
+    const fetchTaskCategories = async () => {
+      try {
+        setLoading(true);
+        const data = await getTaskCategoryData();
+        setTaskCategoryData(data);
+      } catch (error) {
+        setError(error.message || "Failed to load data");
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchTaskCategories();
+  }, []);
+
+  // Fetch task questions when a category is selected
+  useEffect(() => {
+    const fetchTaskQuestions = async () => {
+      if (!selectedCategory) return; // 🛑 If no category is selected, do nothing
+      try {
+        setLoading(true);
+        const data = await getTaskQuestionData(selectedCategory.task_category_id);
+        setTaskQuestionData(data);
+      } catch (error) {
+        setError(error.message || "Failed to load questions");
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchTaskQuestions();
+  }, [selectedCategory]); // 🔄 Refetch when selectedCategory changes
+
+  const refreshTaskCategory = async () => {
     try {
-      await taskCategoryRegister(formData);
-      setSuccess(true);
-      refreshTaskCategory(); // Refresh the table
-      setOpenForm(false);
-    } catch (error) {
-      setLocalError(error?.message || "Failed to create task category. Please try again.");
+      setLoading(true);
+      const data = await getTaskCategoryData();
+      setTaskCategoryData(data);
+    } catch (err) {
+      setError(err.message || "Failed to refresh task categories");
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <>
-      {/* ✅ "New Task Category" Button */}
-      <Box
-        sx={{
-          display: "flex",
-          justifyContent: "flex-end", // ✅ Moves the button to the right
-          px: 3,
-          pb: 2,
-          width: "100%",
-          position: "sticky",
-          top: 0,
-          zIndex: 2,
-        }}
+    <MainLayout>
+      <div
+        className="position-relative d-flex flex-column vh-100 justify-content-start overflow"
+        style={{ zIndex: 1, padding: "20px", marginTop: "70px" }}
       >
-        <Button
-          variant="contained"
-          color="primary"
-          startIcon={<AddIcon />}
-          sx={{
-            textTransform: "none",
-            borderRadius: "8px",
-            fontSize: "0.875rem",
-            padding: "10px 20px", // ✅ Increased button size
-          }}
-          onClick={() => setOpenForm(true)}
-        >
-          New task category
-        </Button>
-      </Box>
+        {isAuthenticated ? (
+          <>
+            <div style={{ display: "flex", justifyContent: "center", gap: "20px" }}>
+              {/* Pass setSelectedCategory to TaskCategoryTable */}
+              <TaskCategoryTable
+                taskCategoryData={taskCategoryData}
+                loading={loading}
+                setLoading={setLoading}
+                error={error}
+                refreshTaskCategory={refreshTaskCategory}
+                onCategorySelect={setSelectedCategory} // 🆕 Pass function to update selected category
+              />
+            </div>
 
-      {/* ✅ Form Dialog */}
-      <Dialog open={openForm} onClose={() => setOpenForm(false)} fullWidth maxWidth="sm">
-        <DialogTitle>Create New Task Category</DialogTitle>
-        <DialogContent>
-          <TextField
-            fullWidth
-            label="Task Name"
-            name="task_name"
-            value={formData.task_name}
-            onChange={handleChange}
-            margin="dense"
-            required
-          />
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={() => setOpenForm(false)} color="secondary">
-            Cancel
-          </Button>
-          <Button
-            onClick={handleSubmit}
-            color="primary"
-            variant="contained"
-            disabled={loading}
-          >
-            {loading ? <CircularProgress size={24} color="inherit" /> : "Create"}
-          </Button>
-        </DialogActions>
-      </Dialog>
-    </>
+            <div style={{ marginTop: "40px" }}>
+              {/* Pass taskQuestionData and selectedCategory */}
+              <TaskCategoryQuestionTable
+                taskQuestionData={taskQuestionData}
+                selectedCategory={selectedCategory}
+              />
+            </div>
+
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginTop: "40px" }}>
+              <footer
+                className="p-2 text-white"
+                style={{
+                  fontSize: "13px",
+                  background: "rgba(0,0,0,0.5)",
+                  textAlign: "center",
+                  width: "400px",
+                  borderRadius: "5px",
+                }}
+              >
+                ©2025 Developed by INT team PGHV Hitachi Energy VN
+              </footer>
+              <img src={companyLogo} alt="company logo" style={{ width: "150px" }} />
+            </div>
+          </>
+        ) : (
+          <p className="text-red-600">You are not authenticated ❌</p>
+        )}
+      </div>
+    </MainLayout>
   );
 };
 
-export default TaskCategoryRegisterForm;
+export default TaskManagementPage;
