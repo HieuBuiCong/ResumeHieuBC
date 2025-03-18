@@ -1,37 +1,9 @@
-import React, { useState } from "react";
-import {
-  Dialog,
-  DialogTitle,
-  DialogContent,
-  DialogActions,
-  TextField,
-  Button,
-  CircularProgress,
-  Snackbar,
-  Alert,
-  Grid,
-  Box,
-  Portal,
-} from "@mui/material";
-import AddIcon from "@mui/icons-material/Add";
-import { keyframes } from "@emotion/react";
-import { taskCategoryRegister } from "../../services/taskCategoryService";
-
-// Keyframes for sway animation
-const sway = keyframes`
-  0% { transform: translateX(100%); }
-  50% { transform: translateX(-10%); }
-  100% { transform: translateX(0); }
-`;
-
-const TaskCategoryRegisterForm = ({ refreshTaskCategory }) => {
+const TaskCategoryRegisterForm = ({ refreshTaskCategory, setLocalError, setSuccess }) => {
   const [openForm, setOpenForm] = useState(false);
   const [formData, setFormData] = useState({ task_name: "" });
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState(null);
-  const [success, setSuccess] = useState(false);
 
-  // Handle form input change
+  // Handle input change
   const handleChange = (e) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
   };
@@ -39,16 +11,16 @@ const TaskCategoryRegisterForm = ({ refreshTaskCategory }) => {
   // Handle form submission
   const handleSubmit = async () => {
     setLoading(true);
-    setError(null);
+    setLocalError(null);
     setSuccess(false);
 
     try {
       await taskCategoryRegister(formData);
       setSuccess(true);
-      refreshTaskCategory(); // Refresh the task category table
+      refreshTaskCategory(); // Refresh the table
       setOpenForm(false);
     } catch (error) {
-      setError(error?.error || "Failed to create task category. Please try again.");
+      setLocalError(error?.message || "Failed to create task category. Please try again.");
     } finally {
       setLoading(false);
     }
@@ -56,33 +28,19 @@ const TaskCategoryRegisterForm = ({ refreshTaskCategory }) => {
 
   return (
     <>
-      {/* ✅ Success & Error Snackbar */}
-      <Portal>
-        <Snackbar
-          open={!!error}
-          autoHideDuration={4000}
-          onClose={() => setError(null)}
-          anchorOrigin={{ vertical: 'top', horizontal: 'right' }}
-          sx={{ position: "fixed", zIndex: 9999, animation: `${sway} 0.5s ease-in-out`, marginTop: '64px' }}
-        >
-          <Alert severity="error">{error}</Alert>
-        </Snackbar>
-      </Portal>
-
-      <Portal>
-        <Snackbar
-          open={success}
-          autoHideDuration={4000}
-          onClose={() => setSuccess(false)}
-          anchorOrigin={{ vertical: 'top', horizontal: 'right' }}
-          sx={{ animation: `${sway} 0.5s ease-in-out`, marginTop: '64px' }}
-        >
-          <Alert severity="success">Task category created successfully!</Alert>
-        </Snackbar>
-      </Portal>
-
-      {/* ✅ Button positioned on the right */}
-      <Box sx={{ display: "flex", justifyContent: "flex-end", alignItems: "center" }}>
+      {/* ✅ "New Task Category" Button */}
+      <Box
+        sx={{
+          display: "flex",
+          justifyContent: "flex-end", // ✅ Moves the button to the right
+          px: 3,
+          pb: 2,
+          width: "100%",
+          position: "sticky",
+          top: 0,
+          zIndex: 2,
+        }}
+      >
         <Button
           variant="contained"
           color="primary"
@@ -91,32 +49,27 @@ const TaskCategoryRegisterForm = ({ refreshTaskCategory }) => {
             textTransform: "none",
             borderRadius: "8px",
             fontSize: "0.875rem",
-            padding: "6px 16px",
+            padding: "10px 20px", // ✅ Increased button size
           }}
           onClick={() => setOpenForm(true)}
         >
-          New Task Category
+          New task category
         </Button>
       </Box>
 
-      {/* ✅ Task Category Form Dialog */}
+      {/* ✅ Form Dialog */}
       <Dialog open={openForm} onClose={() => setOpenForm(false)} fullWidth maxWidth="sm">
         <DialogTitle>Create New Task Category</DialogTitle>
         <DialogContent>
-          <Grid container spacing={2} alignItems="center">
-            <Grid item xs>
-              <TextField
-                fullWidth
-                label="Task Name"
-                name="task_name"
-                value={formData.task_name}
-                onChange={handleChange}
-                margin="dense"
-                required
-                sx={{ mb: 2 }}
-              />
-            </Grid>
-          </Grid>
+          <TextField
+            fullWidth
+            label="Task Name"
+            name="task_name"
+            value={formData.task_name}
+            onChange={handleChange}
+            margin="dense"
+            required
+          />
         </DialogContent>
         <DialogActions>
           <Button onClick={() => setOpenForm(false)} color="secondary">
