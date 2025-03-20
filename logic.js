@@ -28,41 +28,26 @@ import {
   Tooltip,
   Select,
   CircularProgress,
-  // ...
+  Snackbar,
+  Alert,
+  Portal,
+  Typography,
 } from "@mui/material";
 import FilterListIcon from "@mui/icons-material/FilterList";
 import SearchIcon from "@mui/icons-material/Search";
 import ClearIcon from "@mui/icons-material/Clear";
-import SaveAltIcon from '@mui/icons-material/SaveAlt';
-// 💕🆕 NEW: For 3-dot menu
+import SaveAltIcon from "@mui/icons-material/SaveAlt";
 import MoreVertIcon from "@mui/icons-material/MoreVert";
 import EditIcon from "@mui/icons-material/Edit";
 import DeleteIcon from "@mui/icons-material/Delete";
-
 import { margin, styled } from '@mui/system';
 
-import { saveAs } from "file-saver";
-import Papa from "papaparse";
 
-// 🚀🚀 get task category data from API
-import { taskCategoryDelete, taskCategoryUpdate, getTaskCategoryData } from "../../services/taskCategoryService";
 
 // 🌑🌚🌚🌚🎯 dark mode
 import { useDarkMode } from "../../context/DarkModeContext";
-import { createTheme, ThemeProvider, Typography } from "@mui/material";
-
-// Snackbar to handle delete and edit
-import { Snackbar, Alert, Portal } from "@mui/material";
-import { keyframes } from "@emotion/react";
-
-import TaskCategoryRegisterForm from "./TaskCategoryRegisterForm";
-
-// Keyframes for sway animation
-const sway = keyframes`
-  0% { transform: translateX(100%); }
-  50% { transform: translateX(-10%); }
-  100% { transform: translateX(0); }
-`;
+import { createTheme, ThemeProvider } from "@mui/material";
+import {  paperStyles, boxStyles, searchTextFieldStyles, snackBarStyles } from "./tableStyle.js";
 
 const StyledTablePagination = styled(TablePagination)(({ theme }) => ({
   '& .MuiTablePagination-toolbar': {
@@ -72,255 +57,86 @@ const StyledTablePagination = styled(TablePagination)(({ theme }) => ({
   },
 }));
 
-// ✅ Table Columns
-const columns = ["task_category_id", "task_name"];
-
-const TaskCategoryTable = ({selectedTaskCategoryForQuestion, setSelectedTaskCategoryForQuestion}) => {
-    const [searchQuery, setSearchQuery] = useState("");
-    const [filters, setFilters] = useState({});
-    const [anchorEl, setAnchorEl] = useState(null);
-    const [filterColumn, setFilterColumn] = useState("");
-    const [filterSearch, setFilterSearch] = useState("");
-    const [page, setPage] = useState(0);
-    const [rowsPerPage, setRowsPerPage] = useState(5);
-
-    const [taskCategoryData, setTaskCategoryData] = useState([]);
-    const [loading, setLoading] = useState(true);
-    const [error, setError] = useState(null);
-
-    // 💕🆕 NEW: Three-dot Menu States
-    const [menuAnchor, setMenuAnchor] = useState(null);
-    const [selectedTaskCategory, setSelectedTaskCategory] = useState(null);
-
-    // 🦤 NEW: Row Editing State
-    const [editingRowId, setEditingRowId] = useState(null);
-    const [editValues, setEditValues] = useState({});
-    
-    // 🤣😂 NEW: Delete confirmation Dialog Open
-    const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
-
-    // Dealing with Error of deleting, edit, changepassword
-    const [localError, setLocalError] = useState(null);
-    const [success, setSuccess] = useState(false);
-    const [successMessage, setSuccessMessage] = useState("");
-
-    // Load the task category data when mounted
-    useEffect(() => {
-        const fetchData = async () => {
-          try {
-            setLoading(true);
-            const data = await getTaskCategoryData();
-            setTaskCategoryData(data);
-            console.log(taskCategoryData);
-          } catch (error) {
-            setError(error.message || "Failed to load data");
-          } finally {
-            setLoading(false);
-          }
-        }
-        fetchData();
-    }, []);
-
-    // refresh the task category
-    const refreshTaskCategory = async () => {
-      try {
-        setLoading(true);
-        const data = await getTaskCategoryData();
-        setTaskCategoryData(data);
-      } catch (err) {
-        setError(err.message || "Failed to refresh taskCategory");
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    // 🌑🌚🌚🌚🎯 dark mode
-    const { darkMode } = useDarkMode();
-    const theme = createTheme({
-        palette: {
-        mode: darkMode ? "dark" : "light",
-        primary: { main: darkMode ? "#90caf9" : "#1976d2" },
-        background: { default: darkMode ? "#121212" : "#f8f9fa" },
-        backgroundColor : {default: darkMode ? "rgba(33, 31, 31, 0.7)" : "rgba(255,255,255,0.7)"},
-        text: { primary: darkMode ? "#ffffff" : "#000000" },
-        },
-    });
-
-    // ✅ Global Search
-    const handleSearchChange = (e) => {
-        setSearchQuery(e.target.value);
-    };
-
-    // ✅ Open Filter Menu
-    const handleOpenFilter = (event, column) => {
-        setAnchorEl(event.currentTarget);
-        setFilterColumn(column);
-        setFilterSearch(""); // Reset dropdown search input
-    };
-
-    // ✅ Toggle Filter Selection
-    const handleFilterChange = (value) => {
-        const strValue = String(value); // ✅ Convert to string for consistency
-        setFilters((prev) => ({
-        ...prev,
-        [filterColumn]: prev[filterColumn]?.includes(strValue)
-            ? prev[filterColumn].filter((v) => v !== strValue)
-            : [...(prev[filterColumn] || []), strValue],
-        }));
-    };
-
-    // ✅ Clear Filters for a Column
-    const clearFilter = () => {
-        setFilters((prev) => {
-        const updatedFilters = { ...prev };
-        delete updatedFilters[filterColumn];
-        return updatedFilters;
-        });
-        setAnchorEl(null);
-    };
-
-    // ✅ Handle Pagination
-    const handleChangePage = (event, newPage) => setPage(newPage);
-    const handleChangeRowsPerPage = (event) => {
-        setRowsPerPage(parseInt(event.target.value, 10));
-        setPage(0);
-    };
-
-    // 💕🆕 OPEN & CLOSE 3-DOT MENU
-    const handleMenuOpen = (event, taskCategory) => {
-        setMenuAnchor(event.currentTarget);
-        setSelectedTaskCategory(taskCategory);
-    };
-    const handleMenuClose = () => {
-        setMenuAnchor(null);
-        //setSelectedTaskCategory(null);
-    };
-
-    // 🦤 NEW: Edit Row
-    const handleEditClick = (taskCategory) => {
-        setEditingRowId(taskCategory.task_category_id);
-        setEditValues({ ...taskCategory }); // Pre-fill textfields with row data
-        console.log(editValues);
-        handleMenuClose();
-    }
-    
-    // 🦤🦤🦤🦤🦤🦤🦤🦤🦤🦤 NEW: Save Row (POST request placeholder)
-    const handleSaveClick = async (taskCategory) => {
-        try {
-        setLoading(true);
-        await taskCategoryUpdate(selectedTaskCategory.task_category_id, editValues );
-        setSuccess(true);
-        setSuccessMessage(`${selectedTaskCategory.task_name} updated successfully`);
-        
-        } catch (err) {
-        setLocalError(err.message || "Failed to update task category");
-        } finally {
-        setLoading(false);
-        setDeleteDialogOpen(false);
-        setSelectedTaskCategory(null);
-        setEditingRowId(null);
-        refreshTaskCategory();
-        }
-        console.log("Updated task category:", selectedTaskCategory);
-    }
-
-    // 🦤🦤🦤🦤🦤🦤🦤🦤🦤🦤 NEW: Delete a row with dialog
-    const handleDeleteClick = (taskCategory) => {
-        console.log("Deleting task category:", taskCategory);
-        setSelectedTaskCategory(taskCategory);
-        setDeleteDialogOpen(true);
-        handleMenuClose(); 
-    }
-
-    const handleConfirmDelete =  async(taskCategory) => {
-        try {
-        setLoading(true);
-        await taskCategoryDelete(selectedTaskCategory.task_category_id);
-        refreshTaskCategory();
-        setSuccess(true);
-        setSuccessMessage(`${selectedTaskCategory.task_name} deleted successfully`);
-        } catch (err) {
-        setLocalError(err.message || "Failed to delete task category");
-        } finally {
-        setLoading(false);
-        setDeleteDialogOpen(false);
-        setSelectedTaskCategory(null);
-        setEditingRowId(null);
-        }
-        console.log("Deleted task category:", selectedTaskCategory);
-    }
-
-    function handleCancelDelete() {
-        setDeleteDialogOpen(false);
-        setSelectedTaskCategory(null);
-    }
-
-    // ✅ APPLY FILTER & SEARCH
-    const filteredTaskCategory = taskCategoryData
-        .filter((taskCategory) =>
-        Object.keys(filters).every((column) =>
-            filters[column]?.length ? filters[column].includes(String(taskCategory[column])) : true // ✅ Convert all values to strings
-        )
-        )
-        .filter((taskCategory) =>
-        Object.values(taskCategory)
-            .map((v) => String(v).toLowerCase()) // ✅ Convert everything to string & lowercase before filtering
-            .join(" ")
-            .includes(searchQuery.toLowerCase())
-        );
+const ReusableTable = ({
+    logic, // all the state from useTableLogic
+    columns, // list out columns you want to show : columns = ["task_category_id", "task_name"]
+    identifierKey, // the id properties of table you want to show - TaskCategoryTable : task_category_id, TaskQuestionTable : task_category_q
+    selectedItemByOtherTableFiltering, // for TaskCategoryTable that when clicking a row updates rows in TaskQuestionTable - setSelectedTaskCategoryForQuestion
+    setSelectedItemByOtherTableFiltering, // the page component will send setSelectedItemByOtherTableFiltering= {setSelectedTaskCategoryForQuestion}
+    identifierKeyOfFilteringTable, // id properties of its filtering table, for TaskCategoryTable it will be null and for TaskQuestionTable - it is task_category_id.
+    title, // title of the table
+    RegisterFormComponent, // register
+    theme, // pass the theme
+  }) => {
+    const {
+      data,
+      loading,
+      error,
+      searchQuery,
+      handleSearchChange,
+      anchorEl,
+      handleOpenFilter,
+      filterColumn,
+      filterSearch,
+      setFilterSearch,
+      filters,
+      handleFilterChange,
+      clearFilter,
+      page,
+      rowsPerPage,
+      handleChangePage,
+      handleChangeRowsPerPage,
+      editingRowId,
+      setEditingRowId,
+      editValues,
+      setEditValues,
+      handleSaveClick,
+      menuAnchor,
+      handleMenuOpen,
+      handleMenuClose,
+      selectedItem,
+      handleEditClick,
+      handleDeleteClick,
+      deleteDialogOpen,
+      handleCancelDelete,
+      handleConfirmDelete,
+      localError,
+      setLocalError,
+      success,
+      setSuccess,
+      successMessage,
+      setSuccessMessage,
+      refreshData,
+      totalDataCount,
+      setAnchorEl,
+    } = logic;
 
   return (
     <ThemeProvider theme={theme}>
-        {loading ? (
-            <div style={{ textAlign: "center", marginTop: "20px" }}>
-                <CircularProgress />
-            </div>
-        ) : error ? (
-            <p className="display-4 text-danger fw-bold" style={{fontSize: "30px"}}>😒😒{error}😒😒</p>
-        ) : (
-            <>
-                <Paper
-                    sx={{
-                    width: "700px",
-                    overflow: "hidden",
-                    p: 2,
-                    borderRadius: "12px",
-                    boxShadow: "0 2px 10px rgba(0,0,0,0.1)",
-                    backgroundColor: theme.palette.backgroundColor.default,
-                    backdropFilter: "blur(10px)",
-                    }}
-                >
-                    <Typography variant="h6" sx={{ fontWeight: "bold", color: "text.primary", marginBottom: "5px" }}>
-                        Task Category
-                    </Typography>
-                   {/* ✅ Container for Search Bar & Register Button */}
-                    <Box 
-                        sx={{ 
-                            display: "flex", 
-                            justifyContent: "space-between", 
-                            alignItems: "center", 
-                            gap: 2,
-                            mb: 2,
-                            width: "100%",
-                            height: "70px", 
-                        }}
-                    >
+        <Paper sx={paperStyles(theme)} >
+            {loading ? (
+                    <div style={{ textAlign: "center", marginTop: "20px" }}>
+                        <CircularProgress />
+                    </div>
+            ) : error ? (
+                <Typography color="error">{error}</Typography>
+            ) : (
+                <>  { identifierKeyOfFilteringTable === identifierKey ? (
+                        <Typography variant="h6" sx={{ fontWeight: "bold", color: "text.primary", marginBottom: "5px" }}>
+                            {title}
+                        </Typography> ) : (
+                        <Typography variant="h6" sx={{ fontWeight: "bold", color: "text.primary", marginBottom: "5px" }}>
+                            {title} for ID : {selectedItemByOtherTableFiltering.identifierKeyOfFilteringTable}  {/*🐦‍🔥🐦‍🔥🐦‍🔥🔥*/ }
+                        </Typography>
+                        )
+                    }
+                    {/* ✅ Container for Search Bar & Register Button */}
+                    <Box sx={boxStyles}>
                         {/* 🔍 Global Search */}
                         <TextField
                             placeholder="Search ..."
                             variant="outlined"
-                            sx={{
-                                maxWidth: "250px",
-                                borderRadius: "8px",
-                                backgroundColor: theme.palette.backgroundColor.default,
-                                boxShadow: "0 1px 5px rgba(0,0,0,0.1)",
-                                "& .MuiOutlinedInput-root": {
-                                    borderRadius: "8px",
-                                    "& fieldset": { borderColor: "#ddd" },
-                                    "&:hover fieldset": { borderColor: "#bbb" },
-                                    "&.Mui-focused fieldset": { borderColor: "#1976d2" }
-                                }
-                            }}
+                            sx={searchTextFieldStyles(theme)}
                             value={searchQuery}
                             onChange={handleSearchChange}
                             InputProps={{
@@ -331,8 +147,8 @@ const TaskCategoryTable = ({selectedTaskCategoryForQuestion, setSelectedTaskCate
                                 ),
                             }}
                         />
-                        {/* ➕ Register New Task Category Button (aligned to the right) */}
-                        <TaskCategoryRegisterForm refreshTaskCategory={refreshTaskCategory} setLocalError={setLocalError} setSuccess={setSuccess} setSuccessMessage={setSuccessMessage} />
+                        {/* ➕ Register New Task Question Button (aligned to the right) */}
+                        <RegisterFormComponent refreshData={refreshData} setLocalError={setLocalError} setSuccess={setSuccess} setSuccessMessage={setSuccessMessage} />
                     </Box>
 
                     <TableContainer className="pt-3">
@@ -353,24 +169,24 @@ const TaskCategoryTable = ({selectedTaskCategoryForQuestion, setSelectedTaskCate
 
                             {/*🦤🦤🦤🦤🦤🦤🦤🦤 TABLE BODY */}
                             <TableBody>
-                                {filteredTaskCategory.slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage).map((taskCategory) => (
+                                {data.slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage).map((dataItem) => (
                                     <TableRow
-                                        key={taskCategory.task_category_id}
+                                        key={dataItem[identifierKey]}
                                         hover
                                         sx={{
                                         height: "20px",
                                         cursor: "pointer",
                                         transition: "background 0.2s ease-in-out",
                                         "&:hover": { backgroundColor: "#f5f5f5" },
-                                        backgroundColor: selectedTaskCategoryForQuestion?.task_category_id === taskCategory.task_category_id ? "#f5f5f5" : "inherit",
+                                        backgroundColor: selectedItemByOtherTableFiltering?.[identifierKeyOfFilteringTable] === dataItem[identifierKeyOfFilteringTable] ? "#f5f5f5" : "inherit",
                                         }}
-                                        onClick= {() => setSelectedTaskCategoryForQuestion(taskCategory)} //🆕 Select category on row click
+                                        onClick= {() => setSelectedItemByOtherTableFiltering(dataItem)} //🆕 Select category on row click
                                     >
                                         {columns.map((column) => (
                                         <TableCell key={column} sx={{ fontSize: "0.9rem", maxWidth: "150px", overflow: "hidden", whiteSpace: "nowrap", textOverflow: "ellipsis" }}>
                                             {column === "task_category_id" ? (
-                                            <span>{taskCategory[column]}</span>
-                                            ) : editingRowId === taskCategory.task_category_id ? (
+                                            <span>{dataItem[column]}</span>
+                                            ) : editingRowId === dataItem[identifierKey] ? (
                                                 <TextField
                                                     variant="outlined"
                                                     size="small"
@@ -380,17 +196,17 @@ const TaskCategoryTable = ({selectedTaskCategoryForQuestion, setSelectedTaskCate
                                                     }
                                                 />
                                             ) : (
-                                                <Tooltip title={taskCategory[column]} arrow>
-                                                <span>{taskCategory[column]}</span>
+                                                <Tooltip title={dataItem[column]} arrow>
+                                                <span>{dataItem[column]}</span>
                                                 </Tooltip>
                                             )}
                                         </TableCell>
                                         ))}
                                         {/* ACTIONS: If editing => show Save button, else show 3-dot */}
                                         <TableCell align="right">
-                                        {editingRowId === taskCategory.task_category_id ? (
+                                        {editingRowId === dataItem[identifierKey] ? (
                                             <Box sx= {{display: 'flex', gap: 1}}>
-                                            <Button variant="contained" onClick={() => handleSaveClick(taskCategory.task_category_id)}>
+                                            <Button variant="contained" onClick={() => handleSaveClick(dataItem[identifierKey])}>
                                                 Save
                                             </Button>
                                             <Button variant="contained" color="error" onClick={() => setEditingRowId(null)}>
@@ -398,7 +214,7 @@ const TaskCategoryTable = ({selectedTaskCategoryForQuestion, setSelectedTaskCate
                                             </Button>
                                             </Box>
                                         ) : (
-                                            <IconButton onClick={(e) => handleMenuOpen(e, taskCategory)}>
+                                            <IconButton onClick={(e) => handleMenuOpen(e, dataItem)}>
                                             <MoreVertIcon />
                                             </IconButton>
                                         )}
@@ -412,7 +228,7 @@ const TaskCategoryTable = ({selectedTaskCategoryForQuestion, setSelectedTaskCate
                     {/* 📌 Pagination */}
                     <StyledTablePagination
                         component="div"
-                        count={filteredTaskCategory.length}
+                        count={totalDataCount}
                         page={page}
                         rowsPerPage={rowsPerPage}
                         onPageChange={handleChangePage}
@@ -463,7 +279,7 @@ const TaskCategoryTable = ({selectedTaskCategoryForQuestion, setSelectedTaskCate
                         }}
                     >
                         {filterColumn &&
-                        Array.from(new Set(taskCategoryData.map((taskCategory) => String(taskCategory[filterColumn]))))
+                        Array.from(new Set(dataItemData.map((dataItem) => String(dataItem[filterColumn]))))
                             .filter((value) => value.toLowerCase().includes(filterSearch.toLowerCase()))
                             .map((value) => (
                             <ListItem
@@ -510,11 +326,11 @@ const TaskCategoryTable = ({selectedTaskCategoryForQuestion, setSelectedTaskCate
 
                     {/* 💕🆕 3-DOT MENU (EDIT / DELETE) */}
                     <Menu anchorEl={menuAnchor} open={Boolean(menuAnchor)} onClose={handleMenuClose}>
-                        <MenuItem onClick={() => handleEditClick(selectedTaskCategory)}>
+                        <MenuItem onClick={() => handleEditClick(selectedItem)}>
                             <EditIcon sx={{ marginRight: 1 }} />
                             Edit
                         </MenuItem>
-                        <MenuItem onClick={() => handleDeleteClick(selectedTaskCategory)} sx={{ color: "red" }}>
+                        <MenuItem onClick={() => handleDeleteClick(selectedItem)} sx={{ color: "red" }}>
                             <DeleteIcon sx={{ marginRight: 1 }} />
                             Delete
                         </MenuItem>
@@ -530,49 +346,41 @@ const TaskCategoryTable = ({selectedTaskCategoryForQuestion, setSelectedTaskCate
                         </DialogContent>
                         <DialogActions>
                             <Button onClick={handleCancelDelete}>No</Button>
-                            <Button onClick={() => handleConfirmDelete(selectedTaskCategory)} variant="contained" color="error">
+                            <Button onClick={() => handleConfirmDelete(selectedItem)} variant="contained" color="error">
                                 Yes
                             </Button>
                         </DialogActions>
                     </Dialog>
-                </Paper>
-
-                {/* ✅ Error Snackbar */}
-                <Portal>
-                    <Snackbar
-                        open={!!localError} // open if there is a error
-                        autoHideDuration={4000}
-                        onClose={() => setLocalError(null)}
-                        anchorOrigin={{ vertical: 'top', horizontal: 'right' }} // position at the top right of the screen
-                        sx={{
-                        position: "fixed", // ensure snack bar is fixed and unaffected by the Dialog backdrop
-                        zIndex: 9999, // ensure snackbar appear above other UI element
-                        animation: `${sway} 0.5s ease-in-out`, // applies sway animation to the snack bar
-                        marginTop: '64px',
-                        }}
-                    >
-                        <Alert severity="error">{localError}</Alert>
-                    </Snackbar>
-                </Portal>
-                {/* ✅ Success Snackbar */}
-                <Portal>
-                    <Snackbar
-                        open={success}
-                        autoHideDuration={4000}
-                        onClose={() => setSuccess(false)}
-                        anchorOrigin={{ vertical: 'top', horizontal: 'right' }}
-                        sx={{
-                        animation: `${sway} 0.5s ease-in-out`,
-                        marginTop: '64px', 
-                        }}
-                    >
-                        <Alert severity="success">{successMessage}</Alert>
-                    </Snackbar>
-                </Portal>
-            </>
-        )}
+                    
+                    {/* ✅ Error Snackbar */}
+                    <Portal>
+                        <Snackbar
+                            open={!!localError} // open if there is a error
+                            autoHideDuration={4000}
+                            onClose={() => setLocalError(null)}
+                            anchorOrigin={{ vertical: 'top', horizontal: 'right' }} // position at the top right of the screen
+                            sx={snackBarStyles}
+                        >
+                            <Alert severity="error">{localError}</Alert>
+                        </Snackbar>
+                    </Portal>
+                    {/* ✅ Success Snackbar */}
+                    <Portal>
+                        <Snackbar
+                            open={success}
+                            autoHideDuration={4000}
+                            onClose={() => setSuccess(false)}
+                            anchorOrigin={{ vertical: 'top', horizontal: 'right' }}
+                            sx={snackBarStyles}
+                        >
+                            <Alert severity="success">{successMessage}</Alert>
+                        </Snackbar>
+                    </Portal>
+                </>
+            )}
+        </Paper>
     </ThemeProvider>
   );
 };
 
-export default TaskCategoryTable;
+export default ReusableTable;
