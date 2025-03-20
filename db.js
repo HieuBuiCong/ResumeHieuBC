@@ -1,12 +1,12 @@
 import { useEffect, useState, useMemo } from "react";
 
 const useTableLogic = ({
-  fetchDataFn,
+  fetchDataFn, // async function to fetch the Table data - TaskQuestionTable : getTaskQuestionData from taskQuestionService.js
   filterCondition = null,
-  identifierKey,
-  deleteFn,
-  updateFn,
-  itemLabelKey,
+  identifierKey, // with TaskQuestionTable : task_category_question_id, with TaskCategoryTable: task_category_id.
+  deleteFn, // async function to delete table row - TaskQuestionTable : taskQuestionDelete
+  updateFn, // async function to delete table row - TaskQuestionTable : taskQuestionUpdate
+  itemLabelKey, // with TaskQuestionTable : task_name, with TaskCategoryTable: question_name. 
 }) => {
   const [data, setData] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -30,7 +30,7 @@ const useTableLogic = ({
 
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
 
-  const [localError, setLocalError] = useState(null);
+  const [localError, setLocalError ] = useState(null);
   const [success, setSuccess] = useState(false);
   const [successMessage, setSuccessMessage] = useState("");
 
@@ -107,7 +107,7 @@ const useTableLogic = ({
       setSuccess(true);
       setSuccessMessage(`${selectedItem[itemLabelKey]} updated successfully`);
     } catch (err) {
-      setLocalError(err.message || "Failed to update item");
+      (err.message || "Failed to update item");
     } finally {
       setLoading(false);
       setSelectedItem(null);
@@ -129,7 +129,7 @@ const useTableLogic = ({
       setSuccess(true);
       setSuccessMessage(`${selectedItem[itemLabelKey]} deleted successfully`);
     } catch (err) {
-      setLocalError(err.message || "Failed to delete item");
+      (err.message || "Failed to delete item");
     } finally {
       setLoading(false);
       setDeleteDialogOpen(false);
