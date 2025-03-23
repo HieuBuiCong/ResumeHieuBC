@@ -1,233 +1,52 @@
-import { useEffect, useState, useMemo } from "react";
+import React, { useMemo } from "react";
+import useTableLogic from "./useTableLogic.js";
+import ReusableTable from "./ReusableTable.jsx";
+import { getCIDData, cidDelete, cidUpdate } from "../../services/cidService.js";
+import CIDRegisterForm from "./CIDRegisterForm.jsx";
+import { useDarkMode } from "../../context/DarkModeContext";
+import { createTheme } from "@mui/material";
 
-const useTableLogic = ({
-  fetchDataFn, // async function to fetch the Table data - TaskQuestionTable : getTaskQuestionData from taskQuestionService.js
-  filterCondition = null,
-  identifierKey, // with TaskQuestionTable : task_category_question_id, with TaskCategoryTable: task_category_id.
-  deleteFn, // async function to delete table row - TaskQuestionTable : taskQuestionDelete
-  updateFn, // async function to delete table row - TaskQuestionTable : taskQuestionUpdate
-  itemLabelKey, // with TaskQuestionTable : task_name, with TaskCategoryTable: question_name. 
-}) => {
-  const [data, setData] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
+const columns = [
+  "cid_id", "part_number", "next_rev", "supplier_id", 
+  "rework_or_not", "ots_or_not", "status", "deadline", 
+  "change_notice", "created_date", "closing_date", "note"
+];
 
-  const [searchQuery, setSearchQuery] = useState("");
-  const [filters, setFilters] = useState({});
+const CIDTable = ({ selectedCIDItem, setSelectedCIDItem }) => {
+  const { darkMode } = useDarkMode();
 
-  const [anchorEl, setAnchorEl] = useState(null);
-  const [filterColumn, setFilterColumn] = useState("");
-  const [filterSearch, setFilterSearch] = useState("");
+  // Memoize the theme for better performance
+  const theme = useMemo(() => createTheme({
+    palette: {
+      mode: darkMode ? "dark" : "light",
+      primary: { main: darkMode ? "#90caf9" : "#1976d2" },
+      background: { default: darkMode ? "#121212" : "#f8f9fa" },
+      backgroundColor: { default: darkMode ? "rgba(33, 31, 31, 0.7)" : "rgba(255,255,255,0.7)" },
+      text: { primary: darkMode ? "#ffffff" : "#000000" },
+    },
+  }), [darkMode]);
 
-  const [page, setPage] = useState(0);
-  const [rowsPerPage, setRowsPerPage] = useState(5);
+  const logic = useTableLogic({
+    fetchDataFn: getCIDData,
+    identifierKey: "cid_id",
+    deleteFn: cidDelete,
+    updateFn: cidUpdate,
+    itemLabelKey: "cid_id",
+  });
 
-  const [menuAnchor, setMenuAnchor] = useState(null);
-  const [selectedItem, setSelectedItem] = useState(null);
-
-  const [editingRowId, setEditingRowId] = useState(null);
-  const [editValues, setEditValues] = useState({});
-
-  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
-
-  const [localError, setLocalError ] = useState(null);
-  const [success, setSuccess] = useState(false);
-  const [successMessage, setSuccessMessage] = useState("");
-
-  const fetchData = async () => {
-    try {
-      setLoading(true);
-      const result = await fetchDataFn();
-      const filteredResult = filterCondition ? result.filter(filterCondition) : result;
-      setData(filteredResult);
-    } catch (err) {
-      setError(err.message || "Failed to load data");
-      console.error(err);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    fetchData();
-  }, [fetchDataFn, filterCondition]);
-
-  const refreshData = () => fetchData();
-
-  const handleSearchChange = (e) => setSearchQuery(e.target.value);
-
-  const handleOpenFilter = (event, column) => {
-    setAnchorEl(event.currentTarget);
-    setFilterColumn(column);
-    setFilterSearch("");
-  };
-
-  const handleFilterChange = (value) => {
-    const strValue = String(value).trim();
-    setFilters((prevFilters) => {
-      const columnFilters = prevFilters[filterColumn] || [];
-      
-      return {
-        ...prevFilters,
-        [filterColumn]: columnFilters.includes(strValue)
-          ? columnFilters.filter((v) => v !== strValue) // Uncheck if already selected
-          : [...columnFilters, strValue], // Add new selection
-      };
-    });
-  };
-
-  const clearFilter = () => {
-    setFilters((prev) => {
-      const updatedFilters = { ...prev };
-      delete updatedFilters[filterColumn];
-      return updatedFilters;
-    });
-    setAnchorEl(null);
-  };
-
-  const handleChangePage = (_, newPage) => setPage(newPage);
-  const handleChangeRowsPerPage = (event) => {
-    setRowsPerPage(parseInt(event.target.value, 10));
-    setPage(0);
-  };
-
-  const handleMenuOpen = (event, item) => {
-    setMenuAnchor(event.currentTarget);
-    setSelectedItem(item);                           
-  };
-
-  const handleMenuClose = () => setMenuAnchor(null);
-
-  const handleEditClick = (item) => {
-    setEditingRowId(item[identifierKey]);
-    setEditValues({ ...item });
-    handleMenuClose();
-  };
-
-  const handleSaveClick = async () => {
-    try {
-      setLoading(true);
-      await updateFn(selectedItem[identifierKey], editValues);
-      setSuccess(true);
-      setSuccessMessage(`${selectedItem[itemLabelKey]} updated successfully`);
-    } catch (err) {
-      console.log(err);
-      setLocalError(err.error || "Failed to update item");
-    } finally {
-      setLoading(false);
-      setSelectedItem(null);
-      setEditingRowId(null);
-      refreshData();
-    }
-  };
-
-  const handleDeleteClick = (item) => {
-    setSelectedItem(item);
-    setDeleteDialogOpen(true);
-    handleMenuClose();
-  };
-
-  const handleConfirmDelete = async () => {
-    try {
-      setLoading(true);
-      await deleteFn(selectedItem[identifierKey]);
-      setSuccess(true);
-      setSuccessMessage(`${selectedItem[itemLabelKey]} deleted successfully`);
-    } catch (err) {
-      (err.message || "Failed to delete item");
-    } finally {
-      setLoading(false);
-      setDeleteDialogOpen(false);
-      setSelectedItem(null);
-      setEditingRowId(null);
-      refreshData();
-    }
-  };
-
-  const handleCancelDelete = () => {
-    setDeleteDialogOpen(false);
-    setSelectedItem(null);
-  };
-
-  const filteredData = useMemo(
-    () =>
-      data.filter((item) =>
-        Object.keys(filters).every((column) => {
-          const filterValues = filters[column];
-          if (!filterValues || filterValues.length === 0) return true;
-   
-          return filterValues.includes(String(item[column]).trim());
-        })
-      )
-      .filter((item) =>
-        Object.values(item)
-          .map((v) => String(v).toLowerCase())
-          .join(" ")
-          .includes(searchQuery.trim().toLowerCase())
-      ),
-    [data, filters, searchQuery]
+  return (
+    <ReusableTable
+      logic={logic}
+      columns={columns}
+      identifierKey="cid_id" // Primary key identifier
+      selectedItemByOtherTableFiltering={selectedCIDItem} // Selection from parent/table filtering
+      setSelectedItemByOtherTableFiltering={setSelectedCIDItem} // Setter for the selection
+      identifierKeyOfFilteringTable="cid_id" // Filtering key, ensure it's accurate for your use-case
+      title="CID List"
+      RegisterFormComponent={CIDRegisterForm} // Component for new registrations
+      theme={theme}
+    />
   );
-
-  const paginatedData = useMemo(
-    () => filteredData.slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage),
-    [filteredData, page, rowsPerPage]
-  );
-
-    // Ensure all unique values are shown in the filter dropdown
-    const uniqueFilterValues = useMemo(
-      () =>
-        Array.from(new Set(data.map((dataItem) => String(dataItem[filterColumn])))),
-      [data, filterColumn]
-    );
-  
-
-  return {
-    data: paginatedData,
-    loading,
-    error,
-    searchQuery,
-    setSearchQuery,
-    filters,
-    setFilters,
-    anchorEl,
-    setAnchorEl,
-    filterColumn,
-    setFilterColumn,
-    filterSearch,
-    setFilterSearch,
-    handleOpenFilter,
-    handleFilterChange,
-    clearFilter,
-    page,
-    rowsPerPage,
-    handleChangePage,
-    handleChangeRowsPerPage,
-    menuAnchor,
-    handleMenuOpen,
-    handleMenuClose,
-    selectedItem,
-    editingRowId,
-    setEditingRowId,
-    editValues,
-    setEditValues,
-    handleEditClick,
-    handleSaveClick,
-    handleDeleteClick,
-    deleteDialogOpen,
-    setDeleteDialogOpen,
-    handleCancelDelete,
-    handleConfirmDelete,
-    localError,
-    setLocalError,
-    success,
-    setSuccess,
-    successMessage,
-    setSuccessMessage,
-    refreshData,
-    totalDataCount: filteredData.length,
-    handleSearchChange,
-    uniqueFilterValues,
-  };
 };
 
-export default useTableLogic;
+export default CIDTable;
