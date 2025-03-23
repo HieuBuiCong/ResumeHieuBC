@@ -1,98 +1,65 @@
-import React, { useContext, useState, useEffect } from "react";
-import { AuthContext } from "../context/AuthContext";
-import MainLayout from "../components/Layout/MainLayout";
-import TaskCategoryTableS from "../components/ReusableTable/TaskCategoryTableS";
-import TaskQuestionTableS from "../components/ReusableTable/TaskQuestionTableS";
-import { useNavigate } from 'react-router-dom';
-import 'bootstrap/dist/css/bootstrap.min.css';
+import React, { useEffect, useState } from "react";
+import useTableLogic from "./useTableLogic.js";
+import ReusableTable from "./ReusableTable.jsx";
+import { getCIDData, cidDelete, cidUpdate } from "../../services/cidService.js";
+import { getProductData } from "../../services/productService.js"; // ensure this import
+import CIDRegisterForm from "./CIDRegisterForm.jsx";
+import { useDarkMode } from "../../context/DarkModeContext";
+import { createTheme } from "@mui/material";
 
-const companyLogo = "/assets/HitachiEnergyLogo.png";
+const columns = ["cid_id", "part_number", "next_rev", "supplier_id", "rework_or_not", "ots_or_not", "status", "deadline", "change_notice", "created_date", "closing_date", "note"];
 
-const TaskManagementPage = () => {
-  const { isAuthenticated } = useContext(AuthContext);
-  const navigate = useNavigate();
+const CIDTable = ({selectedTaskCategoryForQuestion, setSelectedTaskCategoryForQuestion}) => {
 
-  const [authLoading, setAuthLoading] = useState(true);
-  const [selectedCategory, setSelectedCategory] = useState(null);
+  const { darkMode } = useDarkMode();
+  const theme = React.useMemo(() =>
+    createTheme({
+      palette: {
+        mode: darkMode ? "dark" : "light",
+        primary: { main: darkMode ? "#90caf9" : "#1976d2" },
+        background: { default: darkMode ? "#121212" : "#f8f9fa" },
+        backgroundColor: { default: darkMode ? "rgba(33, 31, 31, 0.7)" : "rgba(255,255,255,0.7)" },
+        text: { primary: darkMode ? "#ffffff" : "#000000" },
+      },
+    }), [darkMode]);
 
-  // Authentication guard with loading indicator
+  const logic = useTableLogic({
+    fetchDataFn: getCIDData,
+    identifierKey: "cid_id",
+    deleteFn: cidDelete,
+    updateFn: cidUpdate,
+    itemLabelKey: "cid_id",
+  });
+
+  // 🌟 fetch product data separately here
+  const [productData, setProductData] = useState([]);
+
   useEffect(() => {
-    if (!isAuthenticated) {
-      navigate('/login');
-    }
-    setAuthLoading(false);
-  }, [isAuthenticated, navigate]);
-
-  // Fetch initial category dynamically (if required)
-  useEffect(() => {
-    const fetchInitialCategory = async () => {
-      // Example: fetch from API
-      const initialCategory = { id: 1, name: "Default Category" };
-      setSelectedCategory(initialCategory);
+    const fetchProducts = async () => {
+      try {
+        const products = await getProductData();
+        setProductData(products);
+      } catch (err) {
+        console.error("Error fetching products", err);
+      }
     };
-    fetchInitialCategory();
+    fetchProducts();
   }, []);
 
-  if (authLoading || !selectedCategory) {
-    return <div style={{ textAlign: 'center', marginTop: '50px' }}>Loading...</div>;
-  }
-
   return (
-    <MainLayout>
-      <div
-        className="position-relative d-flex flex-column vh-100 justify-content-start overflow"
-        style={{ zIndex: 1, padding: "20px", marginTop: "70px" }}
-      >
-        <div 
-          style={{ 
-            display: "flex", 
-            justifyContent: "center", 
-            gap: "40px",
-            flexWrap: "wrap" // responsive improvement
-          }}
-        >
-          <TaskCategoryTableS 
-            selectedTaskCategory={selectedCategory} 
-            setSelectedTaskCategory={setSelectedCategory}
-          />
-          <TaskQuestionTableS 
-            selectedTaskCategory={selectedCategory} 
-          />
-        </div>
-
-        <div 
-          style={{ 
-            display: "flex", 
-            alignItems: "center", 
-            justifyContent: "space-between", 
-            marginTop: "40px",
-            flexWrap: "wrap" // responsive improvement
-          }}
-        >
-          <footer
-            style={{
-              padding: "8px",
-              color: "#fff",
-              background: "rgba(0,0,0,0.5)",
-              fontSize: "13px",
-              textAlign: "center",
-              borderRadius: "5px",
-              width: "100%",
-              maxWidth: "400px",
-              margin: "auto"
-            }}
-          >
-            ©2025 Developed by INT team PGHV Hitachi Energy VN
-          </footer>
-          <img 
-            src={companyLogo} 
-            alt="Hitachi Energy Logo" 
-            style={{ width: "150px", margin: "auto" }} 
-          />
-        </div>
-      </div>
-    </MainLayout>
+    <ReusableTable
+        logic={logic}
+        columns={columns}
+        identifierKey="cid_id"
+        selectedItemByOtherTableFiltering={selectedTaskCategoryForQuestion} 
+        setSelectedItemByOtherTableFiltering={setSelectedTaskCategoryForQuestion}
+        identifierKeyOfFilteringTable="cid_id"
+        title="CID List"
+        RegisterFormComponent={CIDRegisterForm}
+        theme={theme}
+        productData={productData} // Pass down product data explicitly
+    />
   );
 };
 
-export default TaskManagementPage;
+export default CIDTable;
