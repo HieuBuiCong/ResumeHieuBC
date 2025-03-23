@@ -1,52 +1,98 @@
-import React, { useMemo } from "react";
-import useTableLogic from "./useTableLogic.js";
-import ReusableTable from "./ReusableTable.jsx";
-import { getCIDData, cidDelete, cidUpdate } from "../../services/cidService.js";
-import CIDRegisterForm from "./CIDRegisterForm.jsx";
-import { useDarkMode } from "../../context/DarkModeContext";
-import { createTheme } from "@mui/material";
+import React, { useContext, useState, useEffect } from "react";
+import { AuthContext } from "../context/AuthContext";
+import MainLayout from "../components/Layout/MainLayout";
+import TaskCategoryTableS from "../components/ReusableTable/TaskCategoryTableS";
+import TaskQuestionTableS from "../components/ReusableTable/TaskQuestionTableS";
+import { useNavigate } from 'react-router-dom';
+import 'bootstrap/dist/css/bootstrap.min.css';
 
-const columns = [
-  "cid_id", "part_number", "next_rev", "supplier_id", 
-  "rework_or_not", "ots_or_not", "status", "deadline", 
-  "change_notice", "created_date", "closing_date", "note"
-];
+const companyLogo = "/assets/HitachiEnergyLogo.png";
 
-const CIDTable = ({ selectedCIDItem, setSelectedCIDItem }) => {
-  const { darkMode } = useDarkMode();
+const TaskManagementPage = () => {
+  const { isAuthenticated } = useContext(AuthContext);
+  const navigate = useNavigate();
 
-  // Memoize the theme for better performance
-  const theme = useMemo(() => createTheme({
-    palette: {
-      mode: darkMode ? "dark" : "light",
-      primary: { main: darkMode ? "#90caf9" : "#1976d2" },
-      background: { default: darkMode ? "#121212" : "#f8f9fa" },
-      backgroundColor: { default: darkMode ? "rgba(33, 31, 31, 0.7)" : "rgba(255,255,255,0.7)" },
-      text: { primary: darkMode ? "#ffffff" : "#000000" },
-    },
-  }), [darkMode]);
+  const [authLoading, setAuthLoading] = useState(true);
+  const [selectedCategory, setSelectedCategory] = useState(null);
 
-  const logic = useTableLogic({
-    fetchDataFn: getCIDData,
-    identifierKey: "cid_id",
-    deleteFn: cidDelete,
-    updateFn: cidUpdate,
-    itemLabelKey: "cid_id",
-  });
+  // Authentication guard with loading indicator
+  useEffect(() => {
+    if (!isAuthenticated) {
+      navigate('/login');
+    }
+    setAuthLoading(false);
+  }, [isAuthenticated, navigate]);
+
+  // Fetch initial category dynamically (if required)
+  useEffect(() => {
+    const fetchInitialCategory = async () => {
+      // Example: fetch from API
+      const initialCategory = { id: 1, name: "Default Category" };
+      setSelectedCategory(initialCategory);
+    };
+    fetchInitialCategory();
+  }, []);
+
+  if (authLoading || !selectedCategory) {
+    return <div style={{ textAlign: 'center', marginTop: '50px' }}>Loading...</div>;
+  }
 
   return (
-    <ReusableTable
-      logic={logic}
-      columns={columns}
-      identifierKey="cid_id" // Primary key identifier
-      selectedItemByOtherTableFiltering={selectedCIDItem} // Selection from parent/table filtering
-      setSelectedItemByOtherTableFiltering={setSelectedCIDItem} // Setter for the selection
-      identifierKeyOfFilteringTable="cid_id" // Filtering key, ensure it's accurate for your use-case
-      title="CID List"
-      RegisterFormComponent={CIDRegisterForm} // Component for new registrations
-      theme={theme}
-    />
+    <MainLayout>
+      <div
+        className="position-relative d-flex flex-column vh-100 justify-content-start overflow"
+        style={{ zIndex: 1, padding: "20px", marginTop: "70px" }}
+      >
+        <div 
+          style={{ 
+            display: "flex", 
+            justifyContent: "center", 
+            gap: "40px",
+            flexWrap: "wrap" // responsive improvement
+          }}
+        >
+          <TaskCategoryTableS 
+            selectedTaskCategory={selectedCategory} 
+            setSelectedTaskCategory={setSelectedCategory}
+          />
+          <TaskQuestionTableS 
+            selectedTaskCategory={selectedCategory} 
+          />
+        </div>
+
+        <div 
+          style={{ 
+            display: "flex", 
+            alignItems: "center", 
+            justifyContent: "space-between", 
+            marginTop: "40px",
+            flexWrap: "wrap" // responsive improvement
+          }}
+        >
+          <footer
+            style={{
+              padding: "8px",
+              color: "#fff",
+              background: "rgba(0,0,0,0.5)",
+              fontSize: "13px",
+              textAlign: "center",
+              borderRadius: "5px",
+              width: "100%",
+              maxWidth: "400px",
+              margin: "auto"
+            }}
+          >
+            ©2025 Developed by INT team PGHV Hitachi Energy VN
+          </footer>
+          <img 
+            src={companyLogo} 
+            alt="Hitachi Energy Logo" 
+            style={{ width: "150px", margin: "auto" }} 
+          />
+        </div>
+      </div>
+    </MainLayout>
   );
 };
 
-export default CIDTable;
+export default TaskManagementPage;
