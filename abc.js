@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   Dialog,
   DialogTitle,
@@ -16,15 +16,16 @@ import {
   Switch,
 } from "@mui/material";
 import AddIcon from "@mui/icons-material/Add";
-import AddTaskIcon from '@mui/icons-material/AddTask';
 import { DatePicker } from '@mui/x-date-pickers/DatePicker';
 import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
 import { AdapterDateFns } from '@mui/x-date-pickers/AdapterDateFns';
 import { cidRegister } from "../../services/cidService";
+import { getProductData } from "../../services/productService";
 
 const CIDRegisterForm = ({ refreshData, setLocalError, setSuccess, setSuccessMessage }) => {
   const [openForm, setOpenForm] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [productOptions, setProductOptions] = useState([]);
 
   const [formData, setFormData] = useState({
     part_number: "",
@@ -39,6 +40,21 @@ const CIDRegisterForm = ({ refreshData, setLocalError, setSuccess, setSuccessMes
     closing_date: null,
     note: "",
   });
+
+  useEffect(() => {
+    const fetchProducts = async () => {
+      try {
+        const products = await getProductData();
+        setProductOptions(products);
+      } catch (error) {
+        console.error("Error fetching products:", error);
+      }
+    };
+
+    if (openForm) {
+      fetchProducts();
+    }
+  }, [openForm]);
 
   const handleChange = (e) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
@@ -91,7 +107,23 @@ const CIDRegisterForm = ({ refreshData, setLocalError, setSuccess, setSuccessMes
         <DialogTitle>Create New CID</DialogTitle>
         <DialogContent dividers>
           <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2, mt: 1 }}>
-            <TextField label="Part Number" name="part_number" value={formData.part_number} onChange={handleChange} required />
+
+            <FormControl fullWidth required>
+              <InputLabel>Part Number</InputLabel>
+              <Select
+                name="part_number"
+                value={formData.part_number}
+                label="Part Number"
+                onChange={handleChange}
+              >
+                {productOptions.map((product) => (
+                  <MenuItem key={product.product_id} value={product.part_number}>
+                    {product.part_number} - {product.part_name}
+                  </MenuItem>
+                ))}
+              </Select>
+            </FormControl>
+
             <TextField label="Next Rev" name="next_rev" value={formData.next_rev} onChange={handleChange} required />
             <TextField label="Supplier ID" name="supplier_id" value={formData.supplier_id} onChange={handleChange} required />
 
@@ -141,6 +173,7 @@ const CIDRegisterForm = ({ refreshData, setLocalError, setSuccess, setSuccessMes
 
             <TextField label="Change Notice" name="change_notice" value={formData.change_notice} onChange={handleChange} multiline rows={2} />
             <TextField label="Note" name="note" value={formData.note} onChange={handleChange} multiline rows={2} />
+
           </Box>
         </DialogContent>
 
