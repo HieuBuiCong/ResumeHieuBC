@@ -1,66 +1,116 @@
-{/* VIEW MODE */}
-<Tooltip
-  title={
-    column === "part_number" && productData
-      ? (
-        <div style={{ fontSize: "0.9rem", lineHeight: "1.5" }}>
-          {(() => {
-            const product = productData.find(p => p.part_number === dataItem[column]);
-            return product ? (
-              <>
-                <div><strong>Product ID:</strong> {product.product_id}</div>
-                <div><strong>Part Number:</strong> {product.part_number}</div>
-                <div><strong>Part Name:</strong> {product.part_name}</div>
-              </>
-            ) : (
-              "No product info available"
-            );
-          })()}
-        </div>
-      )
-      : (dataItem[column]?.toString() || "")
-  }
-  arrow
-  placement="top"
-  componentsProps={{
-    tooltip: {
-      sx: {
-        fontSize: "0.9rem",
-        padding: "12px",
-        backgroundColor: "#333",
-        color: "#fff",
-        borderRadius: "6px",
-        whiteSpace: "normal",
-      },
-    },
-  }}
->
-  <span>
-    {typeof dataItem[column] === "boolean" ? (
-      dataItem[column] ? (
-        <CheckIcon sx={{ color: "green" }} />
-      ) : (
-        <ClearIcon sx={{ color: "red" }} />
-      )
-    ) : column.toLowerCase().includes("date") || column === "deadline" ? (
-      format(new Date(dataItem[column]), "dd-MMM-yy")
-    ) : column.toLowerCase() === "status" ? (
-      <span
-        style={{
-          padding: "2px 8px",
-          borderRadius: "12px",
-          backgroundColor:
-            statusColors[dataItem[column]?.toLowerCase()] || "#ddd",
-          color: "#fff",
-          fontWeight: 500,
-          fontSize: "0.8rem",
-          textTransform: "capitalize",
-        }}
-      >
-        {dataItem[column]}
-      </span>
-    ) : (
-      dataItem[column]
-    )}
-  </span>
-</Tooltip>
+import React, { useState } from "react";
+import {
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
+  TextField,
+  Button,
+  CircularProgress,
+  Snackbar,
+  Alert,
+  Grid,
+  Box,
+  Portal,
+} from "@mui/material";
+import AddIcon from "@mui/icons-material/Add";
+import { keyframes } from "@emotion/react";
+import { cidRegister } from "../../services/cidService";
+import AddTaskIcon from '@mui/icons-material/AddTask';
+
+const CIDRegisterForm = ({ refreshData, setLocalError, setSuccess, setSuccessMessage }) => {
+    const [openForm, setOpenForm] = useState(false);
+    const [formData, setFormData] = useState({ task_name: "" });
+    const [loading, setLoading] = useState(false);
+  
+    // Handle input change
+    const handleChange = (e) => {
+      setFormData({ ...formData, [e.target.name]: e.target.value });
+    };
+  
+    // Handle form submission
+    const handleSubmit = async () => {
+      setLoading(true);
+      setLocalError(null);
+      setSuccess(false);
+  
+      try {
+        await cidRegister(formData);
+        setSuccess(true);
+        setSuccessMessage("Task Category Created Successfully");
+        refreshData(); // Refresh the table
+        setOpenForm(false);
+      } catch (error) {
+        console.log(error);
+        setLocalError(error?.error || "Failed to create task category. Please try again.");
+      } finally {
+        setLoading(false);
+      }
+    };
+  
+    return (
+      <>
+        {/* ✅ "New Task Category" Button */}
+        <Box
+          sx={{
+            display: "flex",
+            justifyContent: "flex-end", // ✅ Moves the button to the right
+            px: 3,
+            pb: 2,
+            width: "100%",
+            position: "sticky",
+            top: 0,
+            zIndex: 2,
+          }}
+        >
+          <Button
+            variant="contained"
+            color="primary"
+            startIcon={<AddIcon />}
+            sx={{
+              textTransform: "none",
+              borderRadius: "8px",
+              fontSize: "0.875rem",
+              padding: "10px 20px",
+              marginTop: "20px" // ✅ Increased button size
+            }}
+            onClick={() => setOpenForm(true)}
+          >
+            New CID
+          </Button>
+        </Box>
+  
+        {/* ✅ Form Dialog */}
+        <Dialog open={openForm} onClose={() => setOpenForm(false)} fullWidth maxWidth="sm">
+          <DialogTitle>Create New Task Category</DialogTitle>
+          <DialogContent style={{ display: 'flex', alignItems: 'center' }}>
+            <AddTaskIcon style={{ marginRight: '8px', color: "red" }} />
+            <TextField
+              fullWidth
+              label="Task Name"
+              name="task_name"
+              value={formData.task_name}
+              onChange={handleChange}
+              margin="dense"
+              required
+            />
+          </DialogContent>
+          <DialogActions>
+            <Button onClick={() => setOpenForm(false)} color="secondary">
+              Cancel
+            </Button>
+            <Button
+              onClick={handleSubmit}
+              color="primary"
+              variant="contained"
+              disabled={loading}
+            >
+              {loading ? <CircularProgress size={24} color="inherit" /> : "Create"}
+            </Button>
+          </DialogActions>
+        </Dialog>
+      </>
+    );
+  };
+  
+  export default CIDRegisterForm;
