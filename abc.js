@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
 import {
   Dialog, DialogTitle, DialogContent, DialogActions, TextField, Button, CircularProgress,
-  Box, FormControlLabel, Switch, InputAdornment
+  Box, FormControlLabel, Switch, Paper
 } from "@mui/material";
 import {
   Numbers as NumbersIcon,
@@ -21,6 +21,11 @@ import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
 import { AdapterDateFns } from '@mui/x-date-pickers/AdapterDateFns';
 import { cidRegister } from "../../services/cidService";
 import { getProductData } from "../../services/productService";
+
+const iconStyles = {
+  fontSize: 30,
+  color: "#1976d2", // Customize icon color here
+};
 
 const CIDRegisterForm = ({ refreshData, setLocalError, setSuccess, setSuccessMessage }) => {
   const [openForm, setOpenForm] = useState(false);
@@ -71,6 +76,13 @@ const CIDRegisterForm = ({ refreshData, setLocalError, setSuccess, setSuccessMes
     }
   };
 
+  const renderField = (icon, component) => (
+    <Paper elevation={2} sx={{ display: 'flex', alignItems: 'center', gap: 2, p: 1.5 }}>
+      <Box>{icon}</Box>
+      <Box flexGrow={1}>{component}</Box>
+    </Paper>
+  );
+
   return (
     <>
       <Box sx={{ display: "flex", justifyContent: "flex-end", px: 3, pb: 2 }}>
@@ -86,102 +98,81 @@ const CIDRegisterForm = ({ refreshData, setLocalError, setSuccess, setSuccessMes
       <Dialog open={openForm} onClose={() => setOpenForm(false)} maxWidth="sm" fullWidth>
         <DialogTitle>Create New CID</DialogTitle>
         <DialogContent dividers>
-          <Box sx={{ display: "flex", flexDirection: "column", gap: 2, mt: 1 }}>
+          <Box sx={{ display: "flex", flexDirection: "column", gap: 2 }}>
 
-            <Autocomplete
-              options={productOptions}
-              getOptionLabel={(opt) => `${opt.part_number} - ${opt.part_name}`}
-              onChange={(_, value) => setFormData({ ...formData, part_number: value?.part_number || "" })}
-              renderInput={(params) => (
-                <TextField {...params} label="Part Number" required
-                  InputProps={{
-                    ...params.InputProps,
-                    startAdornment: (
-                      <InputAdornment position="start">
-                        <NumbersIcon />
-                      </InputAdornment>
-                    ),
-                  }}
-                />
-              )}
-            />
+            {renderField(<NumbersIcon sx={iconStyles} />, 
+              <Autocomplete
+                options={productOptions}
+                getOptionLabel={(opt) => `${opt.part_number} - ${opt.part_name}`}
+                onChange={(_, value) => setFormData({ ...formData, part_number: value?.part_number || "" })}
+                renderInput={(params) => <TextField {...params} label="Part Number" required />}
+              />
+            )}
 
-            <TextField label="Next Rev" name="next_rev" value={formData.next_rev} onChange={handleChange} required
-              InputProps={{
-                startAdornment: <InputAdornment position="start"><UpdateIcon /></InputAdornment>,
-              }}
-            />
+            {renderField(<UpdateIcon sx={iconStyles} />, 
+              <TextField label="Next Rev" name="next_rev" value={formData.next_rev} onChange={handleChange} required />
+            )}
 
-            <TextField label="Supplier ID" name="supplier_id" value={formData.supplier_id} onChange={handleChange} required
-              InputProps={{
-                startAdornment: <InputAdornment position="start"><SupplierIcon /></InputAdornment>,
-              }}
-            />
+            {renderField(<SupplierIcon sx={iconStyles} />, 
+              <TextField label="Supplier ID" name="supplier_id" value={formData.supplier_id} onChange={handleChange} required />
+            )}
 
-            <FormControlLabel control={
-              <Switch checked={formData.rework_or_not} onChange={handleSwitchChange} name="rework_or_not" />
-            } label={<Box sx={{ display: "flex", alignItems: "center", gap: 1 }}><ReworkIcon />Rework?</Box>} />
+            {renderField(<ReworkIcon sx={iconStyles} />, 
+              <FormControlLabel control={
+                <Switch checked={formData.rework_or_not} onChange={handleSwitchChange} name="rework_or_not" />
+              } label="Rework?" />
+            )}
 
-            <FormControlLabel control={
-              <Switch checked={formData.ots_or_not} onChange={handleSwitchChange} name="ots_or_not" />
-            } label={<Box sx={{ display: "flex", alignItems: "center", gap: 1 }}><OTSIcon />OTS?</Box>} />
+            {renderField(<OTSIcon sx={iconStyles} />, 
+              <FormControlLabel control={
+                <Switch checked={formData.ots_or_not} onChange={handleSwitchChange} name="ots_or_not" />
+              } label="OTS?" />
+            )}
 
-            <Autocomplete
-              options={["pending", "in-progress", "complete", "submitted", "overdue"]}
-              value={formData.status}
-              onChange={(_, val) => setFormData({ ...formData, status: val || "pending" })}
-              renderInput={(params) => (
-                <TextField {...params} label="Status" required
-                  InputProps={{
-                    ...params.InputProps,
-                    startAdornment: <InputAdornment position="start"><StatusIcon /></InputAdornment>,
-                  }}
-                />
-              )}
-            />
+            {renderField(<StatusIcon sx={iconStyles} />, 
+              <Autocomplete
+                options={["pending", "in-progress", "complete", "submitted", "overdue"]}
+                value={formData.status}
+                onChange={(_, val) => setFormData({ ...formData, status: val || "pending" })}
+                renderInput={(params) => <TextField {...params} label="Status" required />}
+              />
+            )}
 
             <LocalizationProvider dateAdapter={AdapterDateFns}>
-              <DatePicker
-                label="Deadline"
-                value={formData.deadline}
-                onChange={(val) => handleDateChange("deadline", val)}
-                renderInput={(params) => <TextField {...params}
-                  InputProps={{
-                    ...params.InputProps,
-                    startAdornment: <InputAdornment position="start"><EventIcon /></InputAdornment>,
-                  }} />}
-              />
+              {renderField(<EventIcon sx={iconStyles} />, 
+                <DatePicker
+                  label="Deadline"
+                  value={formData.deadline}
+                  onChange={(val) => handleDateChange("deadline", val)}
+                  renderInput={(params) => <TextField {...params} />}
+                />
+              )}
 
-              <DatePicker
-                label="Created Date"
-                value={formData.created_date}
-                onChange={(val) => handleDateChange("created_date", val)}
-                renderInput={(params) => <TextField {...params}
-                  InputProps={{
-                    ...params.InputProps,
-                    startAdornment: <InputAdornment position="start"><EventIcon /></InputAdornment>,
-                  }} />}
-              />
+              {renderField(<EventIcon sx={iconStyles} />, 
+                <DatePicker
+                  label="Created Date"
+                  value={formData.created_date}
+                  onChange={(val) => handleDateChange("created_date", val)}
+                  renderInput={(params) => <TextField {...params} />}
+                />
+              )}
             </LocalizationProvider>
 
-            <TextField label="Change Notice" name="change_notice" value={formData.change_notice} onChange={handleChange} multiline rows={2}
-              InputProps={{
-                startAdornment: <InputAdornment position="start"><ChangeNoticeIcon /></InputAdornment>,
-              }}
-            />
+            {renderField(<ChangeNoticeIcon sx={iconStyles} />, 
+              <TextField label="Change Notice" name="change_notice" multiline rows={2} value={formData.change_notice} onChange={handleChange} />
+            )}
 
-            <TextField label="Note" name="note" value={formData.note} onChange={handleChange} multiline rows={2}
-              InputProps={{
-                startAdornment: <InputAdornment position="start"><NoteIcon /></InputAdornment>,
-              }}
-            />
+            {renderField(<NoteIcon sx={iconStyles} />, 
+              <TextField label="Note" name="note" multiline rows={2} value={formData.note} onChange={handleChange} />
+            )}
+
           </Box>
         </DialogContent>
 
         <DialogActions>
           <Button onClick={() => setOpenForm(false)} color="secondary">Cancel</Button>
           <Button onClick={handleSubmit} color="primary" variant="contained" disabled={loading}>
-            {loading ? <CircularProgress size={24} color="inherit" /> : "Create"}
+            {loading ? <CircularProgress size={24} /> : "Create"}
           </Button>
         </DialogActions>
       </Dialog>
