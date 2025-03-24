@@ -1,183 +1,231 @@
-import React, { useState, useEffect } from "react";
-import {
-  Dialog, DialogTitle, DialogContent, DialogActions, TextField, Button, CircularProgress,
-  Box, FormControlLabel, Switch, Paper
-} from "@mui/material";
-import {
-  Numbers as NumbersIcon,
-  Update as UpdateIcon,
-  Business as SupplierIcon,
-  Event as EventIcon,
-  Note as NoteIcon,
-  Task as StatusIcon,
-  ChangeCircle as ChangeNoticeIcon,
-  Build as ReworkIcon,
-  Inventory as OTSIcon,
-  Add as AddIcon
-} from "@mui/icons-material";
-import { Autocomplete } from '@mui/material';
-import { DatePicker } from '@mui/x-date-pickers/DatePicker';
-import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
-import { AdapterDateFns } from '@mui/x-date-pickers/AdapterDateFns';
-import { cidRegister } from "../../services/cidService";
-import { getProductData } from "../../services/productService";
-
-const iconStyles = {
-  fontSize: 30,
-  color: "#1976d2", // Customize icon color here
-};
-
-const CIDRegisterForm = ({ refreshData, setLocalError, setSuccess, setSuccessMessage }) => {
-  const [openForm, setOpenForm] = useState(false);
-  const [loading, setLoading] = useState(false);
-  const [productOptions, setProductOptions] = useState([]);
-
-  const [formData, setFormData] = useState({
-    part_number: "",
-    next_rev: "",
-    supplier_id: "",
-    rework_or_not: false,
-    ots_or_not: false,
-    status: "pending",
-    deadline: null,
-    change_notice: "",
-    created_date: new Date(),
-    note: "",
-  });
-
-  useEffect(() => {
-    const fetchProducts = async () => {
-      const products = await getProductData();
-      setProductOptions(products);
-    };
-
-    if (openForm) fetchProducts();
-  }, [openForm]);
-
-  const handleChange = (e) => setFormData({ ...formData, [e.target.name]: e.target.value });
-  const handleSwitchChange = (e) => setFormData({ ...formData, [e.target.name]: e.target.checked });
-  const handleDateChange = (name, value) => setFormData({ ...formData, [name]: value });
-
-  const handleSubmit = async () => {
-    setLoading(true);
-    setLocalError(null);
-    setSuccess(false);
-
-    try {
-      await cidRegister(formData);
-      setSuccess(true);
-      setSuccessMessage("CID Created Successfully");
-      refreshData();
-      setOpenForm(false);
-    } catch (error) {
-      setLocalError(error?.error || "Failed to create CID.");
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const renderField = (icon, component) => (
-    <Paper elevation={2} sx={{ display: 'flex', alignItems: 'center', gap: 2, p: 1.5 }}>
-      <Box>{icon}</Box>
-      <Box flexGrow={1}>{component}</Box>
-    </Paper>
-  );
-
-  return (
-    <>
-      <Box sx={{ display: "flex", justifyContent: "flex-end", px: 3, pb: 2 }}>
-        <Button
-          variant="contained" color="primary" startIcon={<AddIcon />}
-          onClick={() => setOpenForm(true)}
-          sx={{ borderRadius: 2, padding: "8px 16px" }}
-        >
-          New CID
-        </Button>
-      </Box>
-
-      <Dialog open={openForm} onClose={() => setOpenForm(false)} maxWidth="sm" fullWidth>
-        <DialogTitle>Create New CID</DialogTitle>
-        <DialogContent dividers>
-          <Box sx={{ display: "flex", flexDirection: "column", gap: 2 }}>
-
-            {renderField(<NumbersIcon sx={iconStyles} />, 
-              <Autocomplete
-                options={productOptions}
-                getOptionLabel={(opt) => `${opt.part_number} - ${opt.part_name}`}
-                onChange={(_, value) => setFormData({ ...formData, part_number: value?.part_number || "" })}
-                renderInput={(params) => <TextField {...params} label="Part Number" required />}
-              />
-            )}
-
-            {renderField(<UpdateIcon sx={iconStyles} />, 
-              <TextField label="Next Rev" name="next_rev" value={formData.next_rev} onChange={handleChange} required />
-            )}
-
-            {renderField(<SupplierIcon sx={iconStyles} />, 
-              <TextField label="Supplier ID" name="supplier_id" value={formData.supplier_id} onChange={handleChange} required />
-            )}
-
-            {renderField(<ReworkIcon sx={iconStyles} />, 
-              <FormControlLabel control={
-                <Switch checked={formData.rework_or_not} onChange={handleSwitchChange} name="rework_or_not" />
-              } label="Rework?" />
-            )}
-
-            {renderField(<OTSIcon sx={iconStyles} />, 
-              <FormControlLabel control={
-                <Switch checked={formData.ots_or_not} onChange={handleSwitchChange} name="ots_or_not" />
-              } label="OTS?" />
-            )}
-
-            {renderField(<StatusIcon sx={iconStyles} />, 
-              <Autocomplete
-                options={["pending", "in-progress", "complete", "submitted", "overdue"]}
-                value={formData.status}
-                onChange={(_, val) => setFormData({ ...formData, status: val || "pending" })}
-                renderInput={(params) => <TextField {...params} label="Status" required />}
-              />
-            )}
-
-            <LocalizationProvider dateAdapter={AdapterDateFns}>
-              {renderField(<EventIcon sx={iconStyles} />, 
-                <DatePicker
-                  label="Deadline"
-                  value={formData.deadline}
-                  onChange={(val) => handleDateChange("deadline", val)}
-                  renderInput={(params) => <TextField {...params} />}
-                />
-              )}
-
-              {renderField(<EventIcon sx={iconStyles} />, 
-                <DatePicker
-                  label="Created Date"
-                  value={formData.created_date}
-                  onChange={(val) => handleDateChange("created_date", val)}
-                  renderInput={(params) => <TextField {...params} />}
-                />
-              )}
-            </LocalizationProvider>
-
-            {renderField(<ChangeNoticeIcon sx={iconStyles} />, 
-              <TextField label="Change Notice" name="change_notice" multiline rows={2} value={formData.change_notice} onChange={handleChange} />
-            )}
-
-            {renderField(<NoteIcon sx={iconStyles} />, 
-              <TextField label="Note" name="note" multiline rows={2} value={formData.note} onChange={handleChange} />
-            )}
-
-          </Box>
-        </DialogContent>
-
-        <DialogActions>
-          <Button onClick={() => setOpenForm(false)} color="secondary">Cancel</Button>
-          <Button onClick={handleSubmit} color="primary" variant="contained" disabled={loading}>
-            {loading ? <CircularProgress size={24} /> : "Create"}
-          </Button>
-        </DialogActions>
-      </Dialog>
-    </>
-  );
-};
-
-export default CIDRegisterForm;
+<TableRow
+                                        key={dataItem[identifierKey]}
+                                        hover
+                                        sx={{
+                                        height: "30px",
+                                        cursor: "pointer",
+                                        transition: "background 0.2s ease-in-out",
+                                        "&:hover": { backgroundColor: "#f5f5f5" },
+                                        backgroundColor: selectedItemByOtherTableFiltering?.[identifierKeyOfFilteringTable] === dataItem[identifierKeyOfFilteringTable] && identifierKey === identifierKeyOfFilteringTable ? "#89A0B6" : "inherit",
+                                        }}
+                                        onClick= {setSelectedItemByOtherTableFiltering ? () => setSelectedItemByOtherTableFiltering(dataItem) : null} //🆕 Select category on row click
+                                    >
+                                        {columns.map((column) => (
+                                            <TableCell
+                                            key={column}
+                                            sx={{
+                                              fontSize: "0.75rem",
+                                              padding: "8px 12px",
+                                              whiteSpace:
+                                                editingRowId === dataItem[identifierKey]
+                                                  ? "normal" // Allows multiline editing clearly
+                                                  : column.toLowerCase().includes("date") || column === "deadline"
+                                                  ? "nowrap"
+                                                  : "nowrap",
+                                              wordBreak: "break-word",
+                                              overflow: editingRowId === dataItem[identifierKey] ? "visible" : "hidden",
+                                              textOverflow: editingRowId === dataItem[identifierKey] ? "clip" : "ellipsis",
+                                              maxWidth: editingRowId === dataItem[identifierKey] ? "none" : "300px",
+                                              verticalAlign: "top",
+                                            }}
+                                          >
+                                            {editingRowId === dataItem[identifierKey] ? (
+                                                // EDIT MODE
+                                                column.toLowerCase().includes("date") ||column.toLowerCase().includes("deadline") ? (
+                                                <LocalizationProvider dateAdapter={AdapterDateFns}>
+                                                    <DatePicker
+                                                    sx={{
+                                                        "& .MuiInputBase-input": { fontSize: "0.8rem" },
+                                                        "& .MuiAutocomplete-input": { fontSize: "0.8rem" },
+                                                        "& .MuiOutlinedInput-input": { fontSize: "0.8rem" },
+                                                        "& .MuiSelect-select": { fontSize: "0.8rem" },
+                                                      }}
+                                                    value={editValues[column] ? new Date(editValues[column]) : null}
+                                                    onChange={(newValue) => {
+                                                        setEditValues((prev) => ({
+                                                        ...prev,
+                                                        [column]: newValue?.toISOString().split('T')[0] || ""
+                                                        }));
+                                                    }}
+                                                    renderInput={(params) => <TextField size="small" {...params} />}
+                                                    />
+                                                </LocalizationProvider>
+                                                ) : column.toLowerCase() === "status" ? (
+                                                <Select
+                                                    sx={{
+                                                        "& .MuiInputBase-input": { fontSize: "0.8rem" },
+                                                        "& .MuiAutocomplete-input": { fontSize: "0.8rem" },
+                                                        "& .MuiOutlinedInput-input": { fontSize: "0.8rem" },
+                                                        "& .MuiSelect-select": { fontSize: "0.8rem" },
+                                                    }}
+                                                    size="medium"
+                                                    value={editValues[column] || ""}
+                                                    onChange={(e) =>
+                                                    setEditValues((prev) => ({
+                                                        ...prev,
+                                                        [column]: e.target.value
+                                                    }))
+                                                    }
+                                                >
+                                                    {["in-progress", "overdue", "complete", "submitted", "pending", "cancel"].map((status) => (
+                                                    <MenuItem key={status} value={status} sx={{
+                                                        "& .MuiInputBase-input": { fontSize: "0.8rem" },
+                                                        "& .MuiAutocomplete-input": { fontSize: "0.8rem" },
+                                                        "& .MuiOutlinedInput-input": { fontSize: "0.8rem" },
+                                                        "& .MuiSelect-select": { fontSize: "0.8rem" },
+                                                      }}
+                                                    >
+                                                        {status}
+                                                    </MenuItem>
+                                                    ))}
+                                                </Select>
+                                                ) : typeof dataItem[column] === "boolean" ? (
+                                                    <Select
+                                                        sx={{
+                                                            "& .MuiInputBase-input": { fontSize: "0.8rem" },
+                                                            "& .MuiAutocomplete-input": { fontSize: "0.8rem" },
+                                                            "& .MuiOutlinedInput-input": { fontSize: "0.8rem" },
+                                                            "& .MuiSelect-select": { fontSize: "0.8rem" },
+                                                        }}
+                                                        size="small"
+                                                        value={editValues[column] || ""}
+                                                        onChange={(e) =>
+                                                        setEditValues((prev) => ({
+                                                            ...prev,
+                                                            [column]: e.target.value
+                                                        }))
+                                                        }
+                                                    >
+                                                        {["true", "false"].map((status) => (
+                                                        <MenuItem key={status} value={status}>
+                                                            {status}
+                                                        </MenuItem>
+                                                        ))}
+                                                    </Select>
+                                                ) : column === "part_number" && productData ? (
+                                                    <Autocomplete
+                                                        options={productData}
+                                                        getOptionLabel={(opt) => `${opt.part_number} - ${opt.part_name}`}
+                                                        size="small"
+                                                        disablePortal={false} // this allows overflow outside table cell
+                                                        PopperProps={{
+                                                            sx: {
+                                                              minWidth: "300px !important", // or your preferred width
+                                                            },
+                                                        }}
+                                                        onChange={(_, value) => setEditValues((prev) => ({ ...prev, [column]: value?.part_number }))}
+                                                        renderInput={(params) => (
+                                                            <TextField {...params}                                                     sx={{
+                                                                "& .MuiInputBase-input": { fontSize: "0.8rem" },
+                                                                "& .MuiAutocomplete-input": { fontSize: "0.8rem" },
+                                                                "& .MuiOutlinedInput-input": { fontSize: "0.8rem" },
+                                                                "& .MuiSelect-select": { fontSize: "0.8rem" },
+                                                            }} 
+                                                            />
+                                                        )}
+                                                    />
+                                                )
+                                                : (
+                                                <TextField
+                                                    variant="outlined"
+                                                    size="small"
+                                                    value={editValues[column] || ""}
+                                                    onChange={(e) =>
+                                                    setEditValues((prev) => ({
+                                                        ...prev,
+                                                        [column]: e.target.value
+                                                    }))
+                                                    }
+                                                />
+                                                )
+                                            ) : (
+                                                // VIEW MODE
+                                                <Tooltip
+                                                title={
+                                                    // this is to show product information of CID Table
+                                                    column === "part_number" && productData
+                                                    ? (
+                                                        <div style={{ fontSize: "0.9rem", lineHeight: "1.5" }}>
+                                                        {(() => {
+                                                            const product = productData.find(p => p.part_number === dataItem[column]);
+                                                            return product ? (
+                                                            <>
+                                                                <div><strong>Product ID:</strong> {product.product_id}</div>
+                                                                <div><strong>Model:</strong> {product.model}</div>
+                                                                <div><strong>Part Number:</strong> {product.part_number}</div>
+                                                                <div><strong>Part Name:</strong> {product.part_name}</div>
+                                                                <div><strong>Owner:</strong> {product.owner}</div>
+                                                            </>
+                                                            ) : (
+                                                            "No product info available"
+                                                            );
+                                                        })()}
+                                                        </div>
+                                                    )
+                                                    : (dataItem[column]?.toString() || "")
+                                                }
+                                                arrow
+                                                placement="top"
+                                                componentsProps={{
+                                                    tooltip: {
+                                                    sx: {
+                                                        fontSize: "0.8rem",
+                                                        padding: "12px",
+                                                        backgroundColor: "#333",
+                                                        color: "#fff",
+                                                        borderRadius: "6px",
+                                                        whiteSpace: "normal",
+                                                    },
+                                                    },
+                                                }}
+                                                >
+                                                <span>
+                                                    {typeof dataItem[column] === "boolean" ? (
+                                                    dataItem[column] ? (
+                                                        <CheckIcon sx={{ color: "green" }} />
+                                                    ) : (
+                                                        <ClearIcon sx={{ color: "red" }} />
+                                                    )
+                                                    ) : column.toLowerCase().includes("date") || column === "deadline" ? (
+                                                    dataItem[column] ?format(new Date(dataItem[column]), "dd-MMM-yy") : ""
+                                                    ) : column.toLowerCase() === "status" ? (
+                                                    <span
+                                                        style={{
+                                                        padding: "2px 8px",
+                                                        borderRadius: "12px",
+                                                        backgroundColor:
+                                                            statusColors[dataItem[column]?.toLowerCase()] || "#ddd",
+                                                        color: "#fff",
+                                                        fontWeight: 500,
+                                                        fontSize: "0.65rem",
+                                                        textTransform: "capitalize",
+                                                        }}
+                                                    >
+                                                        {dataItem[column]}
+                                                    </span>
+                                                    ) : (
+                                                    dataItem[column]
+                                                    )}
+                                                </span>
+                                                </Tooltip>
+                                            )}
+                                        </TableCell>
+                                        ))}
+                                        {/* ACTIONS: If editing => show Save button, else show 3-dot */}
+                                        <TableCell align="right">
+                                        {editingRowId === dataItem[identifierKey] ? (
+                                            <Box sx= {{display: 'flex', gap: 1}}>
+                                            <Button variant="contained" onClick={() => handleSaveClick(dataItem[identifierKey])}>
+                                                Save
+                                            </Button>
+                                            <Button variant="contained" color="error" onClick={() => setEditingRowId(null)}>
+                                                Cancel
+                                            </Button>
+                                            </Box>
+                                        ) : (
+                                            <IconButton onClick={(e) => handleMenuOpen(e, dataItem)}>
+                                            <MoreVertIcon />
+                                            </IconButton>
+                                        )}
+                                        </TableCell>
+                                    </TableRow>
