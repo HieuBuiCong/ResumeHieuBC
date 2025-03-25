@@ -28,7 +28,6 @@ export const createCIDTask = async (taskData) => {
 
       if (!['complete', 'cancel'].includes(dependencyTask.status)) {
         status = 'pending';
-        deadline = null;
       } else if (taskData.dependency_date && dependencyTask.approval_date) {
         const deadlineResult = await client.query(
           `SELECT (($1::timestamp AT TIME ZONE 'UTC') + ($2 * INTERVAL '1 day')) AT TIME ZONE 'Asia/Ho_Chi_Minh' AS calculated_deadline`,
@@ -57,8 +56,10 @@ export const createCIDTask = async (taskData) => {
     const { rows } = await client.query(insertQuery, insertValues);
     const createdTask = rows[0];
 
-    // ✅ Immediately ensure consistency by running update logic
-    await updateTaskStatusLogic(createdTask.cid_task_id);
+    // ✅ Immediately ensure consistency by running update logic on dependency task
+    if (taskData.dependency_cid_id) {
+      await updateTaskStatusLogic(taskData.dependency_cid_id);
+    }
 
     await client.query('COMMIT'); // ✅ Commit transaction
 
