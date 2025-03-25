@@ -1,231 +1,130 @@
-<TableRow
-                                        key={dataItem[identifierKey]}
-                                        hover
-                                        sx={{
-                                        height: "30px",
-                                        cursor: "pointer",
-                                        transition: "background 0.2s ease-in-out",
-                                        "&:hover": { backgroundColor: "#f5f5f5" },
-                                        backgroundColor: selectedItemByOtherTableFiltering?.[identifierKeyOfFilteringTable] === dataItem[identifierKeyOfFilteringTable] && identifierKey === identifierKeyOfFilteringTable ? "#89A0B6" : "inherit",
-                                        }}
-                                        onClick= {setSelectedItemByOtherTableFiltering ? () => setSelectedItemByOtherTableFiltering(dataItem) : null} //🆕 Select category on row click
-                                    >
-                                        {columns.map((column) => (
-                                            <TableCell
-                                            key={column}
-                                            sx={{
-                                              fontSize: "0.75rem",
-                                              padding: "8px 12px",
-                                              whiteSpace:
-                                                editingRowId === dataItem[identifierKey]
-                                                  ? "normal" // Allows multiline editing clearly
-                                                  : column.toLowerCase().includes("date") || column === "deadline"
-                                                  ? "nowrap"
-                                                  : "nowrap",
-                                              wordBreak: "break-word",
-                                              overflow: editingRowId === dataItem[identifierKey] ? "visible" : "hidden",
-                                              textOverflow: editingRowId === dataItem[identifierKey] ? "clip" : "ellipsis",
-                                              maxWidth: editingRowId === dataItem[identifierKey] ? "none" : "300px",
-                                              verticalAlign: "top",
-                                            }}
-                                          >
-                                            {editingRowId === dataItem[identifierKey] ? (
-                                                // EDIT MODE
-                                                column.toLowerCase().includes("date") ||column.toLowerCase().includes("deadline") ? (
-                                                <LocalizationProvider dateAdapter={AdapterDateFns}>
-                                                    <DatePicker
-                                                    sx={{
-                                                        "& .MuiInputBase-input": { fontSize: "0.8rem" },
-                                                        "& .MuiAutocomplete-input": { fontSize: "0.8rem" },
-                                                        "& .MuiOutlinedInput-input": { fontSize: "0.8rem" },
-                                                        "& .MuiSelect-select": { fontSize: "0.8rem" },
-                                                      }}
-                                                    value={editValues[column] ? new Date(editValues[column]) : null}
-                                                    onChange={(newValue) => {
-                                                        setEditValues((prev) => ({
-                                                        ...prev,
-                                                        [column]: newValue?.toISOString().split('T')[0] || ""
-                                                        }));
-                                                    }}
-                                                    renderInput={(params) => <TextField size="small" {...params} />}
-                                                    />
-                                                </LocalizationProvider>
-                                                ) : column.toLowerCase() === "status" ? (
-                                                <Select
-                                                    sx={{
-                                                        "& .MuiInputBase-input": { fontSize: "0.8rem" },
-                                                        "& .MuiAutocomplete-input": { fontSize: "0.8rem" },
-                                                        "& .MuiOutlinedInput-input": { fontSize: "0.8rem" },
-                                                        "& .MuiSelect-select": { fontSize: "0.8rem" },
-                                                    }}
-                                                    size="medium"
-                                                    value={editValues[column] || ""}
-                                                    onChange={(e) =>
-                                                    setEditValues((prev) => ({
-                                                        ...prev,
-                                                        [column]: e.target.value
-                                                    }))
-                                                    }
-                                                >
-                                                    {["in-progress", "overdue", "complete", "submitted", "pending", "cancel"].map((status) => (
-                                                    <MenuItem key={status} value={status} sx={{
-                                                        "& .MuiInputBase-input": { fontSize: "0.8rem" },
-                                                        "& .MuiAutocomplete-input": { fontSize: "0.8rem" },
-                                                        "& .MuiOutlinedInput-input": { fontSize: "0.8rem" },
-                                                        "& .MuiSelect-select": { fontSize: "0.8rem" },
-                                                      }}
-                                                    >
-                                                        {status}
-                                                    </MenuItem>
-                                                    ))}
-                                                </Select>
-                                                ) : typeof dataItem[column] === "boolean" ? (
-                                                    <Select
-                                                        sx={{
-                                                            "& .MuiInputBase-input": { fontSize: "0.8rem" },
-                                                            "& .MuiAutocomplete-input": { fontSize: "0.8rem" },
-                                                            "& .MuiOutlinedInput-input": { fontSize: "0.8rem" },
-                                                            "& .MuiSelect-select": { fontSize: "0.8rem" },
-                                                        }}
-                                                        size="small"
-                                                        value={editValues[column] || ""}
-                                                        onChange={(e) =>
-                                                        setEditValues((prev) => ({
-                                                            ...prev,
-                                                            [column]: e.target.value
-                                                        }))
-                                                        }
-                                                    >
-                                                        {["true", "false"].map((status) => (
-                                                        <MenuItem key={status} value={status}>
-                                                            {status}
-                                                        </MenuItem>
-                                                        ))}
-                                                    </Select>
-                                                ) : column === "part_number" && productData ? (
-                                                    <Autocomplete
-                                                        options={productData}
-                                                        getOptionLabel={(opt) => `${opt.part_number} - ${opt.part_name}`}
-                                                        size="small"
-                                                        disablePortal={false} // this allows overflow outside table cell
-                                                        PopperProps={{
-                                                            sx: {
-                                                              minWidth: "300px !important", // or your preferred width
-                                                            },
-                                                        }}
-                                                        onChange={(_, value) => setEditValues((prev) => ({ ...prev, [column]: value?.part_number }))}
-                                                        renderInput={(params) => (
-                                                            <TextField {...params}                                                     sx={{
-                                                                "& .MuiInputBase-input": { fontSize: "0.8rem" },
-                                                                "& .MuiAutocomplete-input": { fontSize: "0.8rem" },
-                                                                "& .MuiOutlinedInput-input": { fontSize: "0.8rem" },
-                                                                "& .MuiSelect-select": { fontSize: "0.8rem" },
-                                                            }} 
-                                                            />
-                                                        )}
-                                                    />
-                                                )
-                                                : (
-                                                <TextField
-                                                    variant="outlined"
-                                                    size="small"
-                                                    value={editValues[column] || ""}
-                                                    onChange={(e) =>
-                                                    setEditValues((prev) => ({
-                                                        ...prev,
-                                                        [column]: e.target.value
-                                                    }))
-                                                    }
-                                                />
-                                                )
-                                            ) : (
-                                                // VIEW MODE
-                                                <Tooltip
-                                                title={
-                                                    // this is to show product information of CID Table
-                                                    column === "part_number" && productData
-                                                    ? (
-                                                        <div style={{ fontSize: "0.9rem", lineHeight: "1.5" }}>
-                                                        {(() => {
-                                                            const product = productData.find(p => p.part_number === dataItem[column]);
-                                                            return product ? (
-                                                            <>
-                                                                <div><strong>Product ID:</strong> {product.product_id}</div>
-                                                                <div><strong>Model:</strong> {product.model}</div>
-                                                                <div><strong>Part Number:</strong> {product.part_number}</div>
-                                                                <div><strong>Part Name:</strong> {product.part_name}</div>
-                                                                <div><strong>Owner:</strong> {product.owner}</div>
-                                                            </>
-                                                            ) : (
-                                                            "No product info available"
-                                                            );
-                                                        })()}
-                                                        </div>
-                                                    )
-                                                    : (dataItem[column]?.toString() || "")
-                                                }
-                                                arrow
-                                                placement="top"
-                                                componentsProps={{
-                                                    tooltip: {
-                                                    sx: {
-                                                        fontSize: "0.8rem",
-                                                        padding: "12px",
-                                                        backgroundColor: "#333",
-                                                        color: "#fff",
-                                                        borderRadius: "6px",
-                                                        whiteSpace: "normal",
-                                                    },
-                                                    },
-                                                }}
-                                                >
-                                                <span>
-                                                    {typeof dataItem[column] === "boolean" ? (
-                                                    dataItem[column] ? (
-                                                        <CheckIcon sx={{ color: "green" }} />
-                                                    ) : (
-                                                        <ClearIcon sx={{ color: "red" }} />
-                                                    )
-                                                    ) : column.toLowerCase().includes("date") || column === "deadline" ? (
-                                                    dataItem[column] ?format(new Date(dataItem[column]), "dd-MMM-yy") : ""
-                                                    ) : column.toLowerCase() === "status" ? (
-                                                    <span
-                                                        style={{
-                                                        padding: "2px 8px",
-                                                        borderRadius: "12px",
-                                                        backgroundColor:
-                                                            statusColors[dataItem[column]?.toLowerCase()] || "#ddd",
-                                                        color: "#fff",
-                                                        fontWeight: 500,
-                                                        fontSize: "0.65rem",
-                                                        textTransform: "capitalize",
-                                                        }}
-                                                    >
-                                                        {dataItem[column]}
-                                                    </span>
-                                                    ) : (
-                                                    dataItem[column]
-                                                    )}
-                                                </span>
-                                                </Tooltip>
-                                            )}
-                                        </TableCell>
-                                        ))}
-                                        {/* ACTIONS: If editing => show Save button, else show 3-dot */}
-                                        <TableCell align="right">
-                                        {editingRowId === dataItem[identifierKey] ? (
-                                            <Box sx= {{display: 'flex', gap: 1}}>
-                                            <Button variant="contained" onClick={() => handleSaveClick(dataItem[identifierKey])}>
-                                                Save
-                                            </Button>
-                                            <Button variant="contained" color="error" onClick={() => setEditingRowId(null)}>
-                                                Cancel
-                                            </Button>
-                                            </Box>
-                                        ) : (
-                                            <IconButton onClick={(e) => handleMenuOpen(e, dataItem)}>
-                                            <MoreVertIcon />
-                                            </IconButton>
-                                        )}
-                                        </TableCell>
-                                    </TableRow>
+// ✅ Create a new CID task (Admin Only) - Now supports dependencies
+export const createCIDTask = async (taskData) => {
+  const assignee_id = await getUserIdFromUsername(taskData.assignee_name);
+  if (!assignee_id) throw new Error(`The assignee name: ${taskData.assignee_name} not found`);
+
+  const task_category_id = await getTaskCategoryIdFromTaskName(taskData.task_name);
+  if (!task_category_id) throw new Error(`Task name: ${taskData.task_name} not found`);
+
+  const query = `
+    INSERT INTO cid_task (task_category_id, cid_id, status, assignee_id, deadline, dependency_cid_id, dependency_date)
+    VALUES ($1, $2, COALESCE($3, 'in-progress'), $4, $5, $6, $7)
+    RETURNING *`;
+
+  const values = [
+    task_category_id,
+    taskData.cid_id,
+    taskData.status,
+    assignee_id,
+    taskData.deadline,
+    taskData.dependency_cid_id || null, // ✅ Allows NULL if no dependency
+    taskData.dependency_date || null   
+  ];
+  const { rows } = await pool.query(query, values);
+  return rows[0];
+};
+
+-------------
+import pool from "../config/database.js";
+
+/**
+ * ✅ Updates task status correctly based on dependencies.
+ * ✅ Ensures dependent tasks are "pending" if their parent task is not complete.
+ */
+export const updateTaskStatusLogic = async (taskId, newStatus = null, approverId = null) => {
+    try {
+        // Fetch task details
+        const { rows } = await pool.query("SELECT * FROM cid_task WHERE cid_task_id = $1", [taskId]);
+        if (rows.length === 0) {
+            throw new Error(`Task with ID ${taskId} not found.`);
+        }
+
+        const task = rows[0];
+        let status = newStatus || task.status;
+        let approvalDate = task.approval_date;
+        let submittedDate = task.submitted_date;
+
+        // ✅ If status is "submitted", update submitted_date
+        if (status === "submitted") {
+            submittedDate = new Date(); // Automatically stores in UTC
+        }
+
+        // ✅ If status is "complete" or "cancel", update approval_date
+        if (["complete", "cancel"].includes(status)) {
+            approvalDate = new Date(); // Automatically stores in UTC
+        } else {
+            approvalDate = null; // Reset approval date if status changes back
+        }
+
+        // ✅ If deadline has passed and task is still "in-progress", mark as "overdue"
+        if (task.deadline && new Date(task.deadline) < new Date() && status === "in-progress") {
+            status = "overdue";
+        }
+
+        // ✅ If the deadline is extended and task was "overdue", reset to "in-progress"
+        if (task.deadline && new Date(task.deadline) > new Date() && task.status === "overdue") {
+            status = "in-progress";
+        }
+
+        // 🚨 **FIX: Dependent Tasks Should Not Be "In-Progress" If Parent is Not Completed**
+        if (["overdue", "in-progress", "pending", "submitted"].includes(status)) {
+            await pool.query(`
+                UPDATE cid_task 
+                SET status = 'pending'
+                WHERE dependency_cid_id = $1
+                AND status NOT IN ('complete', 'submitted', 'cancel')
+            `, [taskId]);
+        }
+        
+        //✅ If the current task is "complete" or "cancel" update dependent tasks deadline of mother deadline + dependency_date and status of "in-progress"
+        if (["complete", "cancel"].includes(status)) {
+            await pool.query(`
+                UPDATE cid_task
+                SET deadline = (
+                    CASE
+                        WHEN dependency_date = 0 THEN deadline
+                        ELSE ($1::TIMESTAMP AT TIME ZONE 'UTC') + (dependency_date * INTERVAL '1 day')
+                    END
+                ) AT TIME ZONE 'Asia/Ho_Chi_Minh'
+                WHERE dependency_cid_id = $2
+                AND dependency_cid_id IS NOT NULL  -- ✅ Only update if task has a dependency
+                AND status NOT IN ('complete', 'submitted', 'cancel')
+            `, [approvalDate, taskId]);
+            
+            await pool.query(`
+                UPDATE cid_task 
+                SET status = 'in-progress'
+                WHERE dependency_cid_id = $1
+                AND status NOT IN ('complete', 'submitted', 'cancel')
+                AND deadline IS NOT NULL AND deadline > NOW()
+            `, [taskId]);
+
+            await pool.query(`
+                UPDATE cid_task 
+                SET status = 'overdue'
+                WHERE dependency_cid_id = $1
+                AND status NOT IN ('complete', 'submitted', 'cancel')
+                AND deadline IS NOT NULL AND deadline < NOW()
+            `, [taskId]);
+        }
+
+        // ✅ Update the main task in the database
+        const updatedTask = await pool.query(`
+            UPDATE cid_task
+            SET status = $1, 
+                approval_date = $2,
+                submitted_date = $3
+            WHERE cid_task_id = $4
+            RETURNING *,
+                approval_date AT TIME ZONE 'Asia/Ho_Chi_Minh' AS local_approval_date,
+                submitted_date AT TIME ZONE 'Asia/Ho_Chi_Minh' AS local_submitted_date,
+                deadline AT TIME ZONE 'Asia/Ho_Chi_Minh' AS local_deadline
+        `, [status, approvalDate, submittedDate, taskId]);
+
+        return updatedTask.rows[0];
+
+    } catch (error) {
+        console.error("Error updating task status logic:", error);
+        throw error;
+    }
+};
