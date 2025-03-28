@@ -1,75 +1,59 @@
-export const createCIDTask = async (taskData) => {
-  const client = await pool.connect();
+import React, { useContext, useState, useEffect } from "react";
+import { AuthContext } from "../context/AuthContext";
+import MainLayout from "../components/Layout/MainLayout";
 
-  try {
-    await client.query('BEGIN'); // ✅ Transaction started
+import TaskCategoryTableS from "../components/ReusableTable/TaskCategoryTableS";
+import TaskQuestionTableS from "../components/ReusableTable/TaskQuestionTableS";
 
-    const assignee_id = await getUserIdFromUsername(taskData.assignee_name);
-    if (!assignee_id) throw new Error(`Assignee: ${taskData.assignee_name} not found`);
+import 'bootstrap/dist/css/bootstrap.min.css';
 
-    const task_category_id = await getTaskCategoryIdFromTaskName(taskData.task_name);
-    if (!task_category_id) throw new Error(`Task name: ${taskData.task_name} not found`);
+import { useNavigate } from 'react-router-dom';
 
-    let status = taskData.status || 'in-progress';
-    let deadline = taskData.deadline;
+const companyLogo = "/assets/HitachiEnergyLogo.png";
 
-    // ✅ Dependency check without FOR UPDATE (avoid unnecessary locking here)
-    if (taskData.dependency_cid_id) {
-      const dependencyResult = await client.query(
-        `SELECT status, approval_date FROM cid_task WHERE cid_task_id = $1`,
-        [taskData.dependency_cid_id]
-      );
+const TaskManagementPage = () => { 
+  const { isAuthenticated } = useContext(AuthContext);
+  const [selectedTaskCategoryForQuestion, setSelectedTaskCategoryForQuestion] = useState({task_category_id: 1, task_name: ""});
 
-      if (dependencyResult.rows.length === 0) {
-        throw new Error(`Dependency task ID ${taskData.dependency_cid_id} not found.`);
-      }
-
-      const dependencyTask = dependencyResult.rows[0];
-
-      if (!['complete', 'cancel'].includes(dependencyTask.status)) {
-        status = 'pending';
-      } else if (taskData.dependency_date && dependencyTask.approval_date) {
-        const deadlineResult = await client.query(
-          `SELECT (($1::timestamp AT TIME ZONE 'UTC') + ($2 * INTERVAL '1 day')) AT TIME ZONE 'Asia/Ho_Chi_Minh' AS calculated_deadline`,
-          [dependencyTask.approval_date, taskData.dependency_date]
-        );
-        deadline = deadlineResult.rows[0].calculated_deadline;
-      }
+  // navigate to authen page
+  const navigate = useNavigate();
+  useEffect(() => {
+    if (!isAuthenticated) {
+      navigate('/login');
     }
+  }, [isAuthenticated, navigate]);
 
-    // ✅ Insert task clearly
-    const insertQuery = `
-      INSERT INTO cid_task (task_category_id, cid_id, status, assignee_id, deadline, dependency_cid_id, dependency_date)
-      VALUES ($1, $2, $3, $4, $5, $6, $7)
-      RETURNING *`;
-
-    const insertValues = [
-      task_category_id,
-      taskData.cid_id,
-      status,
-      assignee_id,
-      deadline,
-      taskData.dependency_cid_id || null,
-      taskData.dependency_date || null,
-    ];
-
-    const { rows } = await client.query(insertQuery, insertValues);
-    const createdTask = rows[0];
-
-    await client.query('COMMIT'); // ✅ Immediately commit after creation before calling logic
-
-    // ✅ **Important**: Call update logic separately, outside the main transaction
-    if (taskData.dependency_cid_id) {
-      await updateTaskStatusLogic(taskData.dependency_cid_id);
-    }
-
-    return createdTask;
-
-  } catch (error) {
-    await client.query('ROLLBACK'); // ✅ Rollback transaction on error
-    console.error("Error creating CID Task:", error);
-    throw error;
-  } finally {
-    client.release();
-  }
+  return (
+    <MainLayout>
+      <div
+        className="position-relative d-flex flex-column vh-100 justify-content-start overflow"
+        style={{ zIndex: 1, padding: "20px", marginTop: "70px" }}
+      >
+        <div style={{ display: "flex", justifyContent: "center", gap: "40px" }}>
+            <TaskCategoryTableS 
+              selectedTaskCategoryForQuestion={selectedTaskCategoryForQuestion} setSelectedTaskCategoryForQuestion={setSelectedTaskCategoryForQuestion} // 🆕 Pass function to update selectedTask
+            />
+            <TaskQuestionTableS 
+              selectedTaskCategoryForQuestion={selectedTaskCategoryForQuestion} setSelectedTaskCategoryForQuestion={setSelectedTaskCategoryForQuestion} // 🆕 Pass state upon the selectedTask
+            />
+        </div>
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginTop: "40px" }}>
+          <footer className="p-2 text-white"
+            style={{
+              fontSize: "13px",
+              background: "rgba(0,0,0,0.5)",
+              textAlign: "center",
+              width: "400px",
+              borderRadius: "5px"
+            }}
+          >
+            ©2025 Developed by INT team PGHV Hitachi Energy VN
+          </footer>
+          <img src={companyLogo} alt="company logo" style={{ width: "150px" }} />
+        </div>
+      </div>
+    </MainLayout>
+  );
 };
+
+export default TaskManagementPage;
