@@ -1,59 +1,35 @@
-import React, { useContext, useState, useEffect } from "react";
-import { AuthContext } from "../context/AuthContext";
-import MainLayout from "../components/Layout/MainLayout";
+import { Routes, Route, Navigate } from 'react-router-dom';
+import AuthPage from '../pages/AuthPage';
+import DashboardPage from '../pages/DashboardPage';
+import CIDManagementPage from '../pages/CIDManagementPage';
+import NotFoundPage from '../pages/NotFoundPage';
+import ProtectedRoute from '../components/Common/ProtectedRoute';
+import UserPage from '../pages/UserPage';
+import DepartmentPage from '../pages/DepartmentPage';
+import ProductPage from '../pages/ProductPage';
+import TaskManagementPage from '../pages/TaskManagementPage';
 
-import TaskCategoryTableS from "../components/ReusableTable/TaskCategoryTableS";
-import TaskQuestionTableS from "../components/ReusableTable/TaskQuestionTableS";
+const AppRoutes = () => (
+  <Routes>
+    {/* Default route redirects to dashboard */}
+    <Route path="/" element={<Navigate to="/dashboard" />} />
+    
+    {/* Public routes */}
+    <Route path="/login" element={<AuthPage />} />
 
-import 'bootstrap/dist/css/bootstrap.min.css';
+    {/* Protected routes (Only accessible if authenticated) */}
+    <Route element={<ProtectedRoute />}>
+      <Route path="/dashboard" element={<DashboardPage />} />
+      <Route path="/cid-management" element={<CIDManagementPage />} />
+      <Route path="/user" element={<UserPage />} />
+      <Route path="/department" element={<DepartmentPage/>} />
+      <Route path="/product" element={<ProductPage/>} />
+      <Route path="/task-management" element={<TaskManagementPage/>} />
+    </Route>
 
-import { useNavigate } from 'react-router-dom';
+    {/* 404 Not Found Page */}
+    <Route path="*" element={<NotFoundPage />} />
+  </Routes>
+);
 
-const companyLogo = "/assets/HitachiEnergyLogo.png";
-
-const TaskManagementPage = () => { 
-  const { isAuthenticated } = useContext(AuthContext);
-  const [selectedTaskCategoryForQuestion, setSelectedTaskCategoryForQuestion] = useState({task_category_id: 1, task_name: ""});
-
-  // navigate to authen page
-  const navigate = useNavigate();
-  useEffect(() => {
-    if (!isAuthenticated) {
-      navigate('/login');
-    }
-  }, [isAuthenticated, navigate]);
-
-  return (
-    <MainLayout>
-      <div
-        className="position-relative d-flex flex-column vh-100 justify-content-start overflow"
-        style={{ zIndex: 1, padding: "20px", marginTop: "70px" }}
-      >
-        <div style={{ display: "flex", justifyContent: "center", gap: "40px" }}>
-            <TaskCategoryTableS 
-              selectedTaskCategoryForQuestion={selectedTaskCategoryForQuestion} setSelectedTaskCategoryForQuestion={setSelectedTaskCategoryForQuestion} // 🆕 Pass function to update selectedTask
-            />
-            <TaskQuestionTableS 
-              selectedTaskCategoryForQuestion={selectedTaskCategoryForQuestion} setSelectedTaskCategoryForQuestion={setSelectedTaskCategoryForQuestion} // 🆕 Pass state upon the selectedTask
-            />
-        </div>
-        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginTop: "40px" }}>
-          <footer className="p-2 text-white"
-            style={{
-              fontSize: "13px",
-              background: "rgba(0,0,0,0.5)",
-              textAlign: "center",
-              width: "400px",
-              borderRadius: "5px"
-            }}
-          >
-            ©2025 Developed by INT team PGHV Hitachi Energy VN
-          </footer>
-          <img src={companyLogo} alt="company logo" style={{ width: "150px" }} />
-        </div>
-      </div>
-    </MainLayout>
-  );
-};
-
-export default TaskManagementPage;
+export default AppRoutes;
