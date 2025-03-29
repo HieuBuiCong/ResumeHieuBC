@@ -9,7 +9,10 @@ import {
   CircularProgress,
   Typography,
   IconButton,
-  Box
+  Box,
+  Divider,
+  Tooltip,
+  DialogContentText
 } from "@mui/material";
 import EditIcon from '@mui/icons-material/Edit';
 import CheckIcon from '@mui/icons-material/Check';
@@ -21,6 +24,7 @@ const AnswerModal = ({ open, onClose, task }) => {
   const [answers, setAnswers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [editing, setEditing] = useState(false);
+  const [confirmOpen, setConfirmOpen] = useState(false);
   const { showNotification } = useNotification();
 
   useEffect(() => {
@@ -28,7 +32,6 @@ const AnswerModal = ({ open, onClose, task }) => {
       try {
         const response = await getTaskAnswers(task.cid_task_id);
         setAnswers(response.data);
-        console.log("answers :",response.data);
       } catch (error) {
         showNotification("Failed to fetch answers", "error");
       } finally {
@@ -68,65 +71,80 @@ const AnswerModal = ({ open, onClose, task }) => {
       showNotification("Failed to submit answers", "error");
     } finally {
       setLoading(false);
+      setConfirmOpen(false);
     }
   };
 
   return (
-    <Dialog open={open} onClose={onClose} maxWidth="md" fullWidth>
-      <DialogTitle>Answers for Task: {task.task_name} of CID : {task.cid_id} </DialogTitle>
+    <>
+      <Dialog open={open} onClose={onClose} maxWidth="md" fullWidth>
+        <DialogTitle>Task: {task.task_name} | CID: {task.cid_id}</DialogTitle>
+        <Divider />
 
-      <DialogContent dividers>
-        {loading ? (
-          <CircularProgress />
-        ) : (
-          answers.length === 0 ? (
-            <Typography>No questions available for this task.</Typography>
+        <DialogContent dividers>
+          {loading ? (
+            <Box display="flex" justifyContent="center" my={4}>
+              <CircularProgress />
+            </Box>
           ) : (
-            answers.map((ans, index) => (
-              <Box key={ans.task_category_question_id} sx={{ mb: 2 }}>
-                <Typography variant="subtitle1" sx={{ fontWeight: 'bold' }}>{index + 1}. {ans.question_name}</Typography>
-                {editing ? (
-                  <TextField
-                    value={ans.answer || ""}
-                    onChange={(e) => handleAnswerChange(ans.task_category_question_id, e.target.value)}
-                    fullWidth
-                    multiline
-                    rows={3}
-                  />
-                ) : (
-                  <Typography>{ans.answer || "No answer provided"}</Typography>
-                )}
-              </Box>
-            ))
-          )
-        )}
-      </DialogContent>
+            answers.length === 0 ? (
+              <Typography>No questions available for this task.</Typography>
+            ) : (
+              answers.map((ans, index) => (
+                <Box key={ans.task_category_question_id} sx={{ mb: 3 }}>
+                  <Typography variant="subtitle1" sx={{ fontWeight: 'bold' }}>{index + 1}. {ans.question_name}</Typography>
+                  {editing ? (
+                    <TextField
+                      value={ans.answer || ""}
+                      onChange={(e) => handleAnswerChange(ans.task_category_question_id, e.target.value)}
+                      fullWidth
+                      multiline
+                      rows={3}
+                      variant="outlined"
+                    />
+                  ) : (
+                    <Typography sx={{ color: ans.answer ? "text.primary" : "text.secondary" }}>
+                      {ans.answer || "No answer provided"}
+                    </Typography>
+                  )}
+                </Box>
+              ))
+            )
+          )}
+        </DialogContent>
 
-      <DialogActions>
-        {editing ? (
-          <>
-            <Button onClick={handleSave} startIcon={<CheckIcon />} disabled={loading}>
-              Save
-            </Button>
-            <Button onClick={() => setEditing(false)} startIcon={<ClearIcon />} disabled={loading}>
-              Cancel
-            </Button>
-          </>
-        ) : (
-          <>
-            <Button onClick={() => setEditing(true)} startIcon={<EditIcon />} disabled={loading}>
-              Edit Answers
-            </Button>
-            <Button onClick={handleSubmit} color="success" disabled={loading}>
-              Submit Answers
-            </Button>
-            <Button onClick={onClose} color="error" disabled={loading}>
-              Close
-            </Button>
-          </>
-        )}
-      </DialogActions>
-    </Dialog>
+        <DialogActions>
+          {editing ? (
+            <>
+              <Button onClick={handleSave} startIcon={<CheckIcon />} disabled={loading}>Save</Button>
+              <Button onClick={() => setEditing(false)} startIcon={<ClearIcon />} disabled={loading}>Cancel</Button>
+            </>
+          ) : (
+            <>
+              <Tooltip title="Edit your answers">
+                <Button onClick={() => setEditing(true)} startIcon={<EditIcon />} disabled={loading}>Edit Answers</Button>
+              </Tooltip>
+              <Tooltip title="Submit your answers for review">
+                <Button onClick={() => setConfirmOpen(true)} color="success" disabled={loading}>Submit Answers</Button>
+              </Tooltip>
+              <Button onClick={onClose} color="error" disabled={loading}>Close</Button>
+            </>
+          )}
+        </DialogActions>
+      </Dialog>
+
+      {/* Confirm Dialog for Submission */}
+      <Dialog open={confirmOpen} onClose={() => setConfirmOpen(false)}>
+        <DialogTitle>Confirm Submission</DialogTitle>
+        <DialogContent>
+          <DialogContentText>Are you sure you want to submit your answers? You will not be able to edit them afterward.</DialogContentText>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setConfirmOpen(false)} color="inherit">Cancel</Button>
+          <Button onClick={handleSubmit} color="success">Submit</Button>
+        </DialogActions>
+      </Dialog>
+    </>
   );
 };
 
