@@ -1,23 +1,15 @@
-{/* 💕🆕 3-DOT MENU (EDIT / DELETE / SEND SUMMARY EMAIL) */}
-<Menu anchorEl={menuAnchor} open={Boolean(menuAnchor)} onClose={handleMenuClose}>
-  
-  {/* Show Edit and Delete only if user is Admin */}
-  {isAdmin ? [
-    <MenuItem key="edit" onClick={() => handleEditClick(selectedItem)}>
-      <EditIcon sx={{ marginRight: 1 }} />
-      Edit
-    </MenuItem>,
-    <MenuItem key="delete" onClick={() => handleDeleteClick(selectedItem)} sx={{ color: "red" }}>
-      <DeleteIcon sx={{ marginRight: 1 }} />
-      Delete
-    </MenuItem>
-  ] : null}
-
-  {/* Conditionally show Send Summary Email if function is passed */}
-  {handleSendSummaryEmail && (
-    <MenuItem key="send-email" onClick={() => handleSendSummaryEmail(selectedItem)}>
-      <SaveAltIcon sx={{ marginRight: 1 }} />
-      Send Summary Email
-    </MenuItem>
-  )}
-</Menu>
+❌ Error sending email: Error: connect ETIMEDOUT 35.157.29.171:587
+    at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1634:16) {
+  errno: -4039,
+  code: 'ESOCKET',
+  syscall: 'connect',
+  address: '35.157.29.171',
+  port: 587,
+  command: 'CONN'
+}
+📧 CID Summary email sent for CID #1 to: [
+  'quan.nguyenlong@hitachienergy.com',
+  'duy.van-dang1@hitachienergy.com',
+  'tho.dinh-duc@hitachienergy.com',
+  'manh.tran-van@hitachienergy.com',
+  'hieu.bui-cong@hitachienergy.com'
