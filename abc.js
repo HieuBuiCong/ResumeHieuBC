@@ -1,74 +1,133 @@
-// ✅ Get Answers for a Task by Task ID
-export const getAnswersByTaskId = async (cid_task_id) => {
-  const query = `
-    SELECT a.task_category_question_id, a.answer, q.question_name
-    FROM task_category_question_answer a
-    JOIN task_category_question q ON a.task_category_question_id = q.task_category_question_id
-    WHERE a.cid_task_id = $1
-  `;
-  const { rows } = await pool.query(query, [cid_task_id]);
-  return rows;
-};
+import React, { useEffect, useState } from "react";
+import {
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
+  Button,
+  TextField,
+  CircularProgress,
+  Typography,
+  IconButton,
+  Box
+} from "@mui/material";
+import EditIcon from '@mui/icons-material/Edit';
+import CheckIcon from '@mui/icons-material/Check';
+import ClearIcon from '@mui/icons-material/Clear';
+import { getTaskAnswers, saveTaskAnswers, submitTaskAnswers } from "../../services/answerService";
+import { useNotification } from "../../context/NotificationContext";
 
-// ✅ Update Answers for a Task
-export const updateAnswers = async (cid_task_id, answers) => {
-  const updateQuery = `
-    UPDATE task_category_question_answer
-    SET answer = $1
-    WHERE cid_task_id = $2 AND task_category_question_id = $3
-  `;
+const AnswerModal = ({ open, onClose, task }) => {
+  const [answers, setAnswers] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [editing, setEditing] = useState(false);
+  const { showNotification } = useNotification();
 
-  for (const { task_category_question_id, answer } of answers) {
-    await pool.query(updateQuery, [answer, cid_task_id, task_category_question_id]);
-  }
+  useEffect(() => {
+    const fetchAnswers = async () => {
+      try {
+        const response = await getTaskAnswers(task.cid_task_id);
+        setAnswers(response.data);
+        console.log("answers :",response.data);
+      } catch (error) {
+        showNotification("Failed to fetch answers", "error");
+      } finally {
+        setLoading(false);
+      }
+    };
 
-  return true;
-};
+    if (open) fetchAnswers();
+  }, [open, task.cid_task_id]);
 
+  const handleAnswerChange = (questionId, value) => {
+    setAnswers((prev) => prev.map((ans) =>
+      ans.task_category_question_id === questionId ? { ...ans, answer: value } : ans
+    ));
+  };
 
-// controllers/answer.controller.js
-import { getAnswersByTaskId, updateAnswers } from "../models/answer.model.js";
-
-// ✅ Get Answers by Task ID
-export const getAnswers = async (req, res) => {
-  try {
-    const { task_id } = req.params;
-    const answers = await getAnswersByTaskId(task_id);
-    res.status(200).json({ success: true, data: answers });
-  } catch (error) {
-    res.status(500).json({ error: error.message });
-  }
-};
-
-// ✅ Update Answers
-export const saveAnswers = async (req, res) => {
-  try {
-    const { task_id } = req.params;
-    const { answers } = req.body;
-
-    if (!Array.isArray(answers) || answers.length === 0) {
-      return res.status(400).json({ error: "Invalid answer data." });
+  const handleSave = async () => {
+    try {
+      setLoading(true);
+      await saveTaskAnswers(task.cid_task_id, answers);
+      showNotification("Answers saved successfully!", "success");
+      setEditing(false);
+    } catch (error) {
+      showNotification("Failed to save answers", "error");
+    } finally {
+      setLoading(false);
     }
+  };
 
-    await updateAnswers(task_id, answers);
-    res.status(200).json({ success: true, message: "Answers updated successfully." });
-  } catch (error) {
-    res.status(500).json({ error: error.message });
-  }
+  const handleSubmit = async () => {
+    try {
+      setLoading(true);
+      await submitTaskAnswers(task.cid_task_id);
+      showNotification("Answers submitted successfully!", "success");
+      onClose();
+    } catch (error) {
+      showNotification("Failed to submit answers", "error");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <Dialog open={open} onClose={onClose} maxWidth="md" fullWidth>
+      <DialogTitle>Answers for Task: {task.task_name} of CID : {task.cid_id} </DialogTitle>
+
+      <DialogContent dividers>
+        {loading ? (
+          <CircularProgress />
+        ) : (
+          answers.length === 0 ? (
+            <Typography>No questions available for this task.</Typography>
+          ) : (
+            answers.map((ans, index) => (
+              <Box key={ans.task_category_question_id} sx={{ mb: 2 }}>
+                <Typography variant="subtitle1" sx={{ fontWeight: 'bold' }}>{index + 1}. {ans.question_name}</Typography>
+                {editing ? (
+                  <TextField
+                    value={ans.answer || ""}
+                    onChange={(e) => handleAnswerChange(ans.task_category_question_id, e.target.value)}
+                    fullWidth
+                    multiline
+                    rows={3}
+                  />
+                ) : (
+                  <Typography>{ans.answer || "No answer provided"}</Typography>
+                )}
+              </Box>
+            ))
+          )
+        )}
+      </DialogContent>
+
+      <DialogActions>
+        {editing ? (
+          <>
+            <Button onClick={handleSave} startIcon={<CheckIcon />} disabled={loading}>
+              Save
+            </Button>
+            <Button onClick={() => setEditing(false)} startIcon={<ClearIcon />} disabled={loading}>
+              Cancel
+            </Button>
+          </>
+        ) : (
+          <>
+            <Button onClick={() => setEditing(true)} startIcon={<EditIcon />} disabled={loading}>
+              Edit Answers
+            </Button>
+            <Button onClick={handleSubmit} color="success" disabled={loading}>
+              Submit Answers
+            </Button>
+            <Button onClick={onClose} color="error" disabled={loading}>
+              Close
+            </Button>
+          </>
+        )}
+      </DialogActions>
+    </Dialog>
+  );
 };
 
-
-// routes/answer.routes.js
-import express from "express";
-import { getAnswers, saveAnswers } from "../controllers/answer.controller.js";
-import authMiddleware from "../middleware/auth.middleware.js";
-
-const router = express.Router();
-
-// ✅ Get answers by Task ID
-router.get("/:task_id", authMiddleware, getAnswers);
-
-// ✅ Update answers for a specific Task
-router.put("/:task_id", authMiddleware, saveAnswers);
-
-export default router;
+export default AnswerModal;
