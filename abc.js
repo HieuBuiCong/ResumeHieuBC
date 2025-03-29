@@ -1,35 +1,28 @@
-import { Routes, Route, Navigate } from 'react-router-dom';
-import AuthPage from '../pages/AuthPage';
-import DashboardPage from '../pages/DashboardPage';
-import CIDManagementPage from '../pages/CIDManagementPage';
-import NotFoundPage from '../pages/NotFoundPage';
-import ProtectedRoute from '../components/Common/ProtectedRoute';
-import UserPage from '../pages/UserPage';
-import DepartmentPage from '../pages/DepartmentPage';
-import ProductPage from '../pages/ProductPage';
-import TaskManagementPage from '../pages/TaskManagementPage';
+const handleSendSummaryEmail = async (item) => {
+  try {
+    setLoading(true);
 
-const AppRoutes = () => (
-  <Routes>
-    {/* Default route redirects to dashboard */}
-    <Route path="/" element={<Navigate to="/dashboard" />} />
-    
-    {/* Public routes */}
-    <Route path="/login" element={<AuthPage />} />
+    const response = await fetch('/api/send-summary-email', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ id: item[identifierKey] }),
+    });
 
-    {/* Protected routes (Only accessible if authenticated) */}
-    <Route element={<ProtectedRoute />}>
-      <Route path="/dashboard" element={<DashboardPage />} />
-      <Route path="/cid-management" element={<CIDManagementPage />} />
-      <Route path="/user" element={<UserPage />} />
-      <Route path="/department" element={<DepartmentPage/>} />
-      <Route path="/product" element={<ProductPage/>} />
-      <Route path="/task-management" element={<TaskManagementPage/>} />
-    </Route>
+    if (!response.ok) {
+      const errorResponse = await response.json();
+      throw new Error(errorResponse.error || "Failed to send summary email");
+    }
 
-    {/* 404 Not Found Page */}
-    <Route path="*" element={<NotFoundPage />} />
-  </Routes>
-);
+    const result = await response.json();
+    setSuccess(true);
+    setSuccessMessage(`Summary email sent successfully for ${item[itemLabelKey]}`);
+    console.log("Email sent:", result);
 
-export default AppRoutes;
+  } catch (error) {
+    console.error("Error sending summary email:", error);
+    setLocalError(error.message || "Failed to send summary email");
+  } finally {
+    setLoading(false);
+    setMenuAnchor(null); // Close the menu after action
+  }
+};
