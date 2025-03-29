@@ -1,28 +1,25 @@
-const handleSendSummaryEmail = async (item) => {
-  try {
-    setLoading(true);
+{/* 💕🆕 3-DOT MENU (EDIT / DELETE / SEND SUMMARY EMAIL) */}
+<Menu anchorEl={menuAnchor} open={Boolean(menuAnchor)} onClose={handleMenuClose}>
 
-    const response = await fetch('/api/send-summary-email', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ id: item[identifierKey] }),
-    });
+  {/* Show Edit and Delete only if user is Admin */}
+  {isAdmin && (
+    <>
+      <MenuItem onClick={() => handleEditClick(selectedItem)}>
+        <EditIcon sx={{ marginRight: 1 }} />
+        Edit
+      </MenuItem>
+      <MenuItem onClick={() => handleDeleteClick(selectedItem)} sx={{ color: "red" }}>
+        <DeleteIcon sx={{ marginRight: 1 }} />
+        Delete
+      </MenuItem>
+    </>
+  )}
 
-    if (!response.ok) {
-      const errorResponse = await response.json();
-      throw new Error(errorResponse.error || "Failed to send summary email");
-    }
-
-    const result = await response.json();
-    setSuccess(true);
-    setSuccessMessage(`Summary email sent successfully for ${item[itemLabelKey]}`);
-    console.log("Email sent:", result);
-
-  } catch (error) {
-    console.error("Error sending summary email:", error);
-    setLocalError(error.message || "Failed to send summary email");
-  } finally {
-    setLoading(false);
-    setMenuAnchor(null); // Close the menu after action
-  }
-};
+  {/* Conditionally show Send Summary Email if function is passed */}
+  {handleSendSummaryEmail && (
+    <MenuItem onClick={() => handleSendSummaryEmail(selectedItem)}>
+      <SaveAltIcon sx={{ marginRight: 1 }} />
+      Send Summary Email
+    </MenuItem>
+  )}
+</Menu>
