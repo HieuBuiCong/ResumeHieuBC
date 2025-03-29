@@ -1,25 +1,14 @@
-{/* 💕🆕 3-DOT MENU (EDIT / DELETE / SEND SUMMARY EMAIL) */}
-<Menu anchorEl={menuAnchor} open={Boolean(menuAnchor)} onClose={handleMenuClose}>
-
-  {/* Show Edit and Delete only if user is Admin */}
-  {isAdmin && (
-    <>
-      <MenuItem onClick={() => handleEditClick(selectedItem)}>
-        <EditIcon sx={{ marginRight: 1 }} />
-        Edit
-      </MenuItem>
-      <MenuItem onClick={() => handleDeleteClick(selectedItem)} sx={{ color: "red" }}>
-        <DeleteIcon sx={{ marginRight: 1 }} />
-        Delete
-      </MenuItem>
-    </>
-  )}
-
-  {/* Conditionally show Send Summary Email if function is passed */}
-  {handleSendSummaryEmail && (
-    <MenuItem onClick={() => handleSendSummaryEmail(selectedItem)}>
-      <SaveAltIcon sx={{ marginRight: 1 }} />
-      Send Summary Email
-    </MenuItem>
-  )}
-</Menu>
+const handleSendSummaryEmail = async (item) => {
+  try {
+    console.log("Sending summary email for CID:", item.cid_id);
+    const response = await apiClient.post(`/${item.cid_id}/send-cid_summary_email`);
+    if (response?.data?.success) {
+      alert(`Summary email sent successfully for CID ${item.cid_id}`);
+    } else {
+      throw new Error(response?.data?.message || "Failed to send summary email");
+    }
+  } catch (error) {
+    console.error("Error sending summary email:", error);
+    alert(error.message || "Failed to send summary email");
+  }
+};
