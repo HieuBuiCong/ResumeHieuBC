@@ -116,18 +116,18 @@ const AnswerModal = ({ open, onClose, task }) => {
         <DialogActions>
           {editing ? (
             <>
-              <Button onClick={handleSave} startIcon={<CheckIcon />} disabled={loading}>Save</Button>
-              <Button onClick={() => setEditing(false)} startIcon={<ClearIcon />} disabled={loading}>Cancel</Button>
+              <Button onClick={handleSave} startIcon={<CheckIcon />} disabled={loading} sx={{ backgroundColor: '#4CAF50', color: 'white', '&:hover': { backgroundColor: '#45A049' }}}>Save</Button>
+              <Button onClick={() => setEditing(false)} startIcon={<ClearIcon />} disabled={loading} sx={{ backgroundColor: '#f44336', color: 'white', '&:hover': { backgroundColor: '#e53935' }}}>Cancel</Button>
             </>
           ) : (
             <>
               <Tooltip title="Edit your answers">
-                <Button onClick={() => setEditing(true)} startIcon={<EditIcon />} disabled={loading}>Edit Answers</Button>
+                <Button onClick={() => setEditing(true)} startIcon={<EditIcon />} disabled={loading} sx={{ backgroundColor: '#1976d2', color: 'white', '&:hover': { backgroundColor: '#1565c0' }}}>Edit Answers</Button>
               </Tooltip>
               <Tooltip title="Submit your answers for review">
-                <Button onClick={() => setConfirmOpen(true)} color="success" disabled={loading}>Submit Answers</Button>
+                <Button onClick={() => setConfirmOpen(true)} color="success" disabled={loading} sx={{ backgroundColor: '#00897b', color: 'white', '&:hover': { backgroundColor: '#00796b' }}}>Submit Answers</Button>
               </Tooltip>
-              <Button onClick={onClose} color="error" disabled={loading}>Close</Button>
+              <Button onClick={onClose} color="error" disabled={loading} sx={{ backgroundColor: '#b71c1c', color: 'white', '&:hover': { backgroundColor: '#c62828' }}}>Close</Button>
             </>
           )}
         </DialogActions>
