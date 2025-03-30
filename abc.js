@@ -1,58 +1,56 @@
 export const updateCIDStatus = async (cidId, providedStatus = null) => {
-    try {
-        let newStatus = providedStatus;
+  try {
+    let newStatus = providedStatus;
 
-        if (!providedStatus) {
-            // 🔹 1) Get the Statuses of All Related cid_tasks if status is not provided
-            const { rows: tasks } = await pool.query(`
-                SELECT status, deadline 
-                FROM cid_task 
-                WHERE cid_id = $1
-            `, [cidId]);
+    if (!providedStatus) {
+      // 🔹 1) Get All Task Statuses for the CID
+      const { rows: tasks } = await pool.query(`
+        SELECT status, deadline 
+        FROM cid_task 
+        WHERE cid_id = $1
+      `, [cidId]);
 
-            if (tasks.length === 0) {
-                throw new Error(`No tasks found for CID ID: ${cidId}`);
-            }
+      if (tasks.length === 0) {
+        throw new Error(`No tasks found for CID ID: ${cidId}`);
+      }
 
-            // 🔹 2) Determine the New CID Status
-            newStatus = "pending"; // Default status
-            let latestDeadline = null;
+      // 🔹 2) Determine the New CID Status Using Priority
+      const statusPriority = ["overdue", "in-progress", "submitted", "complete", "cancel", "pending"];
+      
+      // Check for the highest priority status
+      let highestPriorityStatus = "pending"; // Default status
+      let latestDeadline = null;
 
-            for (const task of tasks) {
-                if (task.status === "overdue") {
-                    newStatus = "overdue";
-                    latestDeadline = task.deadline;
-                    break; // Highest priority, no need to check further
-                } else if (task.status === "in-progress") {
-                    newStatus = "in-progress";
-                    latestDeadline = task.deadline;
-                } else if (task.status === "submitted" && newStatus !== "in-progress") {
-                    newStatus = "submitted";
-                    latestDeadline = task.deadline;
-                } else if (task.status === "complete" && !["in-progress", "submitted"].includes(newStatus)) {
-                    newStatus = "complete";
-                    latestDeadline = task.deadline;
-                } else if (task.status === "cancel" && !["in-progress", "submitted", "complete"].includes(newStatus)) {
-                    newStatus = "cancel";
-                    latestDeadline = task.deadline;
-                }
-            }
+      for (const task of tasks) {
+        const taskPriority = statusPriority.indexOf(task.status);
+
+        if (taskPriority === -1) {
+          console.warn(`Unknown status '${task.status}' for task ${task.task_id}`);
+          continue; // Skip unknown statuses
         }
 
-        // 🔹 3) Update CID Status & Deadline in Database
-        const updatedCID = await pool.query(`
-            UPDATE cid
-            SET status = $1, 
-                deadline = $2
-            WHERE cid_id = $3
-            RETURNING *;
-        `, [newStatus, null, cidId]); // Use null for deadline if not applicable
-
-        console.log(`✅ CID #${cidId} updated to status: ${newStatus}`);
-        return updatedCID.rows[0];
-
-    } catch (error) {
-        console.error("❌ Error updating CID status:", error);
-        throw error;
+        if (taskPriority < statusPriority.indexOf(highestPriorityStatus)) {
+          highestPriorityStatus = task.status;
+          latestDeadline = task.deadline;
+        }
+      }
+      newStatus = highestPriorityStatus;
     }
+
+    // 🔹 3) Update CID Status and Deadline
+    const updatedCID = await pool.query(`
+      UPDATE cid
+      SET status = $1, 
+          deadline = $2
+      WHERE cid_id = $3
+      RETURNING *;
+    `, [newStatus, null, cidId]);
+
+    console.log(`✅ CID #${cidId} updated to status: ${newStatus}`);
+    return updatedCID.rows[0];
+
+  } catch (error) {
+    console.error("❌ Error updating CID status:", error);
+    throw error;
+  }
 };
