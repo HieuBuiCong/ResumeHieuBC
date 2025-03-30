@@ -1,10 +1,9 @@
--------------------------
-CREATE TABLE task_approval_history (
-    approval_id SERIAL PRIMARY KEY,
-    cid_task_id INT NOT NULL REFERENCES cid_task(cid_task_id),
-    approver_id INT NOT NULL REFERENCES users(user_id),
-    decision VARCHAR(20) NOT NULL CHECK (decision IN ('approve', 'reject')),
-    approver_reason TEXT NOT NULL,
-    reviewed_at TIMESTAMP DEFAULT NOW()
-);
-how to alter this table to when cid_task_id delete cascade
+-- Step 1: Drop the existing foreign key constraint
+ALTER TABLE task_approval_history
+DROP CONSTRAINT task_approval_history_cid_task_id_fkey;
+
+-- Step 2: Add the new foreign key with ON DELETE CASCADE
+ALTER TABLE task_approval_history
+ADD CONSTRAINT task_approval_history_cid_task_id_fkey
+FOREIGN KEY (cid_task_id) REFERENCES cid_task(cid_task_id)
+ON DELETE CASCADE;
