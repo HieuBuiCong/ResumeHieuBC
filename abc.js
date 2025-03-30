@@ -17,7 +17,8 @@ import {
 import EditIcon from '@mui/icons-material/Edit';
 import CheckIcon from '@mui/icons-material/Check';
 import ClearIcon from '@mui/icons-material/Clear';
-import { getTaskAnswers, saveTaskAnswers, submitTaskAnswers } from "../../services/answerService";
+import { getTaskAnswers, saveTaskAnswers} from "../../services/answerService";
+import { taskSubmit } from "../../services/taskService";
 import { useNotification } from "../../context/NotificationContext";
 
 const AnswerModal = ({ open, onClose, task }) => {
@@ -64,14 +65,32 @@ const AnswerModal = ({ open, onClose, task }) => {
   const handleSubmit = async () => {
     try {
       setLoading(true);
-      await submitTaskAnswers(task.cid_task_id);
-      showNotification("Answers submitted successfully!", "success");
+      setConfirmOpen(false);
+      const response = await taskSubmit(task.cid_task_id);
+
+      // check if the status changed to submitted
+      if(response?.data?.taskSubmitted) {
+        showNotification("Task submitted successfully!", "success");
+      } else {
+        showNotification("Task submission failed", "error");
+      }
+
+      // delay for 1 sec
+      setTimeout(() => {
+        // check if the email are sent
+        if(response?.data?.emailSent) {
+          showNotification("Email notification sent successfully!", "success");
+        } else {
+          showNotification("Failed to send email notification", "warning");
+        }
+      }, 3000);
       onClose();
+
     } catch (error) {
-      showNotification("Failed to submit answers", "error");
+      const errorMessage = error?.response?.data?.message || "Failed to submit answers";
+      showNotification(errorMessage, "error");
     } finally {
       setLoading(false);
-      setConfirmOpen(false);
     }
   };
 
