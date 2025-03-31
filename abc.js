@@ -1,3 +1,4 @@
+{/* Admin Review Dialog */}
 <Dialog open={reviewOpen} onClose={() => setReviewOpen(false)} maxWidth="sm" fullWidth>
   <DialogTitle className={classes.dialogTitle}>Review Extension Request</DialogTitle>
   <DialogContent className={classes.dialogContent}>
