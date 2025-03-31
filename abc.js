@@ -1,246 +1,150 @@
-import { useEffect, useState, useMemo } from "react";
+import React, { useEffect, useState } from 'react';
+import {
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
+  Button,
+  Typography,
+  TextField,
+  CircularProgress,
+  Select,
+  MenuItem,
+  FormControl,
+  InputLabel
+} from '@mui/material';
+import { fetchPostponeHistory, submitExtensionRequest, reviewExtensionRequest } from '../../services/postponeService';
+import { useNotification } from '../../context/NotificationContext';
 
-const useTableLogic = ({
-  fetchDataFn, // async function to fetch the Table data - TaskQuestionTable : getTaskQuestionData from taskQuestionService.js
-  filterCondition = null,
-  identifierKey, // with TaskQuestionTable : task_category_question_id, with TaskCategoryTable: task_category_id.
-  deleteFn, // async function to delete table row - TaskQuestionTable : taskQuestionDelete
-  updateFn, // async function to delete table row - TaskQuestionTable : taskQuestionUpdate
-  itemLabelKey, // with TaskQuestionTable : task_name, with TaskCategoryTable: question_name. 
-}) => {
-  const [data, setData] = useState([]);
+const PostponeHistoryModal = ({ open, onClose, task, isAdmin }) => {
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
-
-  const [searchQuery, setSearchQuery] = useState("");
-  const [filters, setFilters] = useState({});
-
-  const [anchorEl, setAnchorEl] = useState(null);
-  const [filterColumn, setFilterColumn] = useState("");
-  const [filterSearch, setFilterSearch] = useState("");
-
-  const [page, setPage] = useState(0);
-  const [rowsPerPage, setRowsPerPage] = useState(5);
-
-  const [menuAnchor, setMenuAnchor] = useState(null);
-  const [selectedItem, setSelectedItem] = useState(null);
-
-  const [editingRowId, setEditingRowId] = useState(null);
-  const [editValues, setEditValues] = useState({});
-
-  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
-
-  const [localError, setLocalError ] = useState(null);
-  const [success, setSuccess] = useState(false);
-  const [successMessage, setSuccessMessage] = useState("");
-
-  // Manange Answer Modal State
-  const [answerModalOpen, setAnswerModalOpen] = useState(false);
-  const handleOpenAnswers = () => {
-    console.log("Opening AnswerModal for Task:", selectedItem);
-    setAnswerModalOpen(true);
-    handleMenuClose();
-  }
-
-  const fetchData = async () => {
-    try {
-      setLoading(true);
-      const result = await fetchDataFn();
-      const filteredResult = filterCondition ? result.filter(filterCondition) : result;
-      setData(filteredResult);
-    } catch (err) {
-      setError(err.message || "Failed to load data");
-      console.error(err);
-    } finally {
-      setLoading(false);
-    }
-  };
+  const [history, setHistory] = useState([]);
+  const [pendingRequest, setPendingRequest] = useState(null);
+  const [reason, setReason] = useState('');
+  const [proposedDate, setProposedDate] = useState('');
+  const [decision, setDecision] = useState('approve');
+  const [approverReason, setApproverReason] = useState('');
+  const [reviewModalOpen, setReviewModalOpen] = useState(false);
+  const { showNotification } = useNotification();
 
   useEffect(() => {
-    fetchData();
-  }, [fetchDataFn, filterCondition]);
+    const fetchData = async () => {
+      try {
+        setLoading(true);
+        const response = await fetchPostponeHistory(task.cid_task_id);
+        setHistory(response.history);
+        setPendingRequest(response.pendingRequest);
+      } catch (error) {
+        showNotification('Failed to fetch postpone history.', 'error');
+      } finally {
+        setLoading(false);
+      }
+    };
 
-  const refreshData = () => fetchData();
+    if (open) fetchData();
+  }, [open, task.cid_task_id]);
 
-  const handleSearchChange = (e) => setSearchQuery(e.target.value);
-
-  const handleOpenFilter = (event, column) => {
-    setAnchorEl(event.currentTarget);
-    setFilterColumn(column);
-    setFilterSearch("");
-  };
-
-  const handleFilterChange = (value) => {
-    const strValue = String(value).trim();
-    setFilters((prevFilters) => {
-      const columnFilters = prevFilters[filterColumn] || [];
-      
-      return {
-        ...prevFilters,
-        [filterColumn]: columnFilters.includes(strValue)
-          ? columnFilters.filter((v) => v !== strValue) // Uncheck if already selected
-          : [...columnFilters, strValue], // Add new selection
-      };
-    });
-  };
-
-  const clearFilter = () => {
-    setFilters((prev) => {
-      const updatedFilters = { ...prev };
-      delete updatedFilters[filterColumn];
-      return updatedFilters;
-    });
-    setAnchorEl(null);
-  };
-
-  const handleChangePage = (_, newPage) => setPage(newPage);
-  const handleChangeRowsPerPage = (event) => {
-    setRowsPerPage(parseInt(event.target.value, 10));
-    setPage(0);
-  };
-
-  const handleMenuOpen = (event, item) => {
-    setMenuAnchor(event.currentTarget);
-    setSelectedItem(item);                           
-  };
-
-  const handleMenuClose = () => setMenuAnchor(null);
-
-  const handleEditClick = (item) => {
-    setEditingRowId(item[identifierKey]);
-    setEditValues({ ...item });
-    handleMenuClose();
-  };
-
-  const handleSaveClick = async () => {
+  const handleSubmitExtension = async () => {
     try {
-      setLoading(true);
-      console.log(editValues);
-      await updateFn(selectedItem[identifierKey], editValues);
-      setSuccess(true);
-      setSuccessMessage(`${selectedItem[itemLabelKey]} updated successfully`);
-    } catch (err) {
-      console.log(err);
-      setLocalError(err.error || "Failed to update item");
-    } finally {
-      setLoading(false);
-      setSelectedItem(null);
-      setEditingRowId(null);
-      refreshData();
+      await submitExtensionRequest(task.cid_task_id, reason, proposedDate);
+      showNotification('Extension request submitted successfully.', 'success');
+      onClose();
+    } catch (error) {
+      showNotification(error?.response?.data?.message || 'Failed to submit request.', 'error');
     }
   };
 
-  const handleDeleteClick = (item) => {
-    setSelectedItem(item);
-    setDeleteDialogOpen(true);
-    handleMenuClose();
-  };
-
-  const handleConfirmDelete = async () => {
+  const handleReviewSubmit = async () => {
     try {
-      setLoading(true);
-      await deleteFn(selectedItem[identifierKey]);
-      setSuccess(true);
-      setSuccessMessage(`${selectedItem[itemLabelKey]} deleted successfully`);
-    } catch (err) {
-      console.log(err);
-      setLocalError(err?.error || err?.message || "Failed to delete item");
-    } finally {
-      setLoading(false);
-      setDeleteDialogOpen(false);
-      setSelectedItem(null);
-      setEditingRowId(null);
-      refreshData();
+      await reviewExtensionRequest(task.cid_task_id, decision, approverReason);
+      showNotification('Extension request reviewed successfully.', 'success');
+      setReviewModalOpen(false);
+      onClose();
+    } catch (error) {
+      showNotification(error?.response?.data?.message || 'Failed to review request.', 'error');
     }
   };
 
-  const handleCancelDelete = () => {
-    setDeleteDialogOpen(false);
-    setSelectedItem(null);
-  };
+  return (
+    <Dialog open={open} onClose={onClose} maxWidth="md" fullWidth>
+      <DialogTitle>Postpone History for Task: {task.task_name}</DialogTitle>
+      <DialogContent dividers>
+        {loading ? (
+          <CircularProgress />
+        ) : history.length === 0 ? (
+          <Typography>No postpone history available.</Typography>
+        ) : (
+          history.map((entry, index) => (
+            <div key={index} style={{ marginBottom: '16px' }}>
+              <Typography><strong>Status:</strong> {entry.status}</Typography>
+              <Typography><strong>Reason:</strong> {entry.reason}</Typography>
+              <Typography><strong>Proposed Date:</strong> {entry.proposed_date}</Typography>
+              <Typography><strong>Reviewed At:</strong> {entry.reviewed_at || 'N/A'}</Typography>
+            </div>
+          ))
+        )}
+      </DialogContent>
 
-  const filteredData = useMemo(
-    () =>
-      data.filter((item) =>
-        Object.keys(filters).every((column) => {
-          const filterValues = filters[column];
-          if (!filterValues || filterValues.length === 0) return true;
-   
-          return filterValues.includes(String(item[column]).trim());
-        })
-      )
-      .filter((item) =>
-        Object.values(item)
-          .map((v) => String(v).toLowerCase())
-          .join(" ")
-          .includes(searchQuery.trim().toLowerCase())
-      ),
-    [data, filters, searchQuery]
+      <DialogActions>
+        {pendingRequest ? (
+          isAdmin ? (
+            <Button onClick={() => setReviewModalOpen(true)} color="primary" variant="contained">Review Extension</Button>
+          ) : (
+            <Typography color="warning">Pending approval...</Typography>
+          )
+        ) : !isAdmin ? (
+          <>
+            <TextField
+              label="Reason"
+              multiline
+              rows={3}
+              value={reason}
+              onChange={(e) => setReason(e.target.value)}
+              fullWidth
+            />
+            <TextField
+              label="Proposed Date"
+              type="date"
+              value={proposedDate}
+              onChange={(e) => setProposedDate(e.target.value)}
+              InputLabelProps={{ shrink: true }}
+              fullWidth
+            />
+            <Button onClick={handleSubmitExtension} color="success" variant="contained">Submit Extension Request</Button>
+          </>
+        ) : null}
+        <Button onClick={onClose} color="error">Close</Button>
+      </DialogActions>
+
+      {/* Admin Review Modal */}
+      <Dialog open={reviewModalOpen} onClose={() => setReviewModalOpen(false)}>
+        <DialogTitle>Review Extension Request</DialogTitle>
+        <DialogContent>
+          <Typography><strong>Reason:</strong> {pendingRequest?.reason}</Typography>
+          <Typography><strong>Proposed Date:</strong> {pendingRequest?.proposed_date}</Typography>
+          <FormControl fullWidth>
+            <InputLabel>Decision</InputLabel>
+            <Select value={decision} onChange={(e) => setDecision(e.target.value)}>
+              <MenuItem value="approve">Approve</MenuItem>
+              <MenuItem value="reject">Reject</MenuItem>
+            </Select>
+          </FormControl>
+          <TextField
+            label="Approver Reason"
+            multiline
+            rows={3}
+            value={approverReason}
+            onChange={(e) => setApproverReason(e.target.value)}
+            fullWidth
+          />
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={handleReviewSubmit} color="primary" variant="contained">Submit Review</Button>
+          <Button onClick={() => setReviewModalOpen(false)} color="error">Cancel</Button>
+        </DialogActions>
+      </Dialog>
+    </Dialog>
   );
-
-  const paginatedData = useMemo(
-    () => filteredData.slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage),
-    [filteredData, page, rowsPerPage]
-  );
-
-    // Ensure all unique values are shown in the filter dropdown
-    const uniqueFilterValues = useMemo(
-      () =>
-        Array.from(new Set(data.map((dataItem) => String(dataItem[filterColumn])))),
-      [data, filterColumn]
-    );
-  
-
-  return {
-    data: paginatedData,
-    loading,
-    error,
-    searchQuery,
-    setSearchQuery,
-    filters,
-    setFilters,
-    anchorEl,
-    setAnchorEl,
-    filterColumn,
-    setFilterColumn,
-    filterSearch,
-    setFilterSearch,
-    handleOpenFilter,
-    handleFilterChange,
-    clearFilter,
-    page,
-    rowsPerPage,
-    handleChangePage,
-    handleChangeRowsPerPage,
-    menuAnchor,
-    handleMenuOpen,
-    handleMenuClose,
-    selectedItem,
-    editingRowId,
-    setEditingRowId,
-    editValues,
-    setEditValues,
-    handleEditClick,
-    handleSaveClick,
-    handleDeleteClick,
-    deleteDialogOpen,
-    setDeleteDialogOpen,
-    handleCancelDelete,
-    handleConfirmDelete,
-    localError,
-    setLocalError,
-    success,
-    setSuccess,
-    successMessage,
-    setSuccessMessage,
-    refreshData,
-    totalDataCount: filteredData.length,
-    handleSearchChange,
-    uniqueFilterValues,
-    handleOpenAnswers, // update for handle open answer modal.
-    answerModalOpen,
-    setAnswerModalOpen,
-  };
 };
 
-export default useTableLogic;
+export default PostponeHistoryModal;
