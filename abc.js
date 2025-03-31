@@ -11,11 +11,16 @@ import {
   MenuItem,
   TextField,
   Divider,
+  Table,
+  TableBody,
+  TableCell,
+  TableContainer,
+  TableHead,
+  TableRow,
+  Paper,
   DialogContentText,
   Box
 } from "@mui/material";
-import CheckIcon from '@mui/icons-material/Check';
-import ClearIcon from '@mui/icons-material/Clear';
 import { makeStyles } from "@mui/styles";
 import { useNotification } from "../../context/NotificationContext";
 import { fetchPostponeHistory, requestPostpone, reviewPostpone } from "../../services/postponeService";
@@ -29,16 +34,12 @@ const useStyles = makeStyles((theme) => ({
     padding: theme.spacing(2),
     backgroundColor: "#FFFBE6",
   },
-  textField: {
-    marginBottom: theme.spacing(2),
-  },
-  loading: {
-    display: "flex",
-    justifyContent: "center",
-    padding: theme.spacing(2),
-  },
   button: {
     margin: theme.spacing(1),
+  },
+  tableHeader: {
+    backgroundColor: "#f0f0f0",
+    fontWeight: "bold",
   },
 }));
 
@@ -50,7 +51,7 @@ const PostponeHistoryModal = ({ open, onClose, task, refreshData, isAdmin }) => 
   const [history, setHistory] = useState([]);
   const [loading, setLoading] = useState(true);
   const [pendingRequest, setPendingRequest] = useState(null);
-  
+
   // For User Request
   const [proposedDate, setProposedDate] = useState("");
   const [requestReason, setRequestReason] = useState("");
@@ -156,23 +157,32 @@ const PostponeHistoryModal = ({ open, onClose, task, refreshData, isAdmin }) => 
           ) : history?.length === 0 ? (
             <Typography>No postpone history available for this task.</Typography>
           ) : (
-            history.map((record, index) => (
-              <Box key={record.postpone_id || index} sx={{ mb: 3 }}>
-                <Typography variant="subtitle1" sx={{ fontWeight: 'bold' }}>
-                  {index + 1}. Requested by: {record.username}
-                </Typography>
-                <Typography><strong>Reason:</strong> {record.reason}</Typography>
-                <Typography><strong>Proposed Date:</strong> {new Date(record.proposed_date).toLocaleDateString()}</Typography>
-                <Typography><strong>Status:</strong> {record.status}</Typography>
-                {record.approver_name && (
-                  <Typography><strong>Approved By:</strong> {record.approver_name}</Typography>
-                )}
-                {record.approver_reason && (
-                  <Typography><strong>Approver Reason:</strong> {record.approver_reason}</Typography>
-                )}
-                <Divider sx={{ mt: 2 }} />
-              </Box>
-            ))
+            <TableContainer component={Paper}>
+              <Table>
+                <TableHead>
+                  <TableRow className={classes.tableHeader}>
+                    <TableCell>Requested By</TableCell>
+                    <TableCell>Reason</TableCell>
+                    <TableCell>Proposed Date</TableCell>
+                    <TableCell>Status</TableCell>
+                    <TableCell>Approver Name</TableCell>
+                    <TableCell>Approver Reason</TableCell>
+                  </TableRow>
+                </TableHead>
+                <TableBody>
+                  {history.map((record, index) => (
+                    <TableRow key={record.postpone_id || index}>
+                      <TableCell>{record.username || 'N/A'}</TableCell>
+                      <TableCell>{record.reason}</TableCell>
+                      <TableCell>{new Date(record.proposed_date).toLocaleDateString()}</TableCell>
+                      <TableCell>{record.status}</TableCell>
+                      <TableCell>{record.approver_name || 'N/A'}</TableCell>
+                      <TableCell>{record.approver_reason || 'N/A'}</TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </TableContainer>
           )}
         </DialogContent>
 
