@@ -12,8 +12,7 @@ import {
   TextField,
   Divider,
   DialogContentText,
-  Box,
-  Tooltip
+  Box
 } from "@mui/material";
 import CheckIcon from '@mui/icons-material/Check';
 import ClearIcon from '@mui/icons-material/Clear';
@@ -24,7 +23,7 @@ import { fetchPostponeHistory, requestPostpone, reviewPostpone } from "../../ser
 const useStyles = makeStyles((theme) => ({
   dialogTitle: {
     backgroundColor: "#347928",
-    color: theme.palette.common.white,
+    color: "#fff",
   },
   dialogContent: {
     padding: theme.spacing(2),
@@ -41,9 +40,6 @@ const useStyles = makeStyles((theme) => ({
   button: {
     margin: theme.spacing(1),
   },
-  select: {
-    marginBottom: theme.spacing(2),
-  },
 }));
 
 const PostponeHistoryModal = ({ open, onClose, task, refreshData, isAdmin }) => {
@@ -54,13 +50,16 @@ const PostponeHistoryModal = ({ open, onClose, task, refreshData, isAdmin }) => 
   const [history, setHistory] = useState([]);
   const [loading, setLoading] = useState(true);
   const [pendingRequest, setPendingRequest] = useState(null);
-  const [decision, setDecision] = useState("approve");
-  const [reviewReason, setReviewReason] = useState("");
+  
+  // For User Request
   const [proposedDate, setProposedDate] = useState("");
   const [requestReason, setRequestReason] = useState("");
-
-  const [reviewOpen, setReviewOpen] = useState(false);
   const [requestOpen, setRequestOpen] = useState(false);
+
+  // For Admin Review
+  const [decision, setDecision] = useState("approve");
+  const [reviewReason, setReviewReason] = useState("");
+  const [reviewOpen, setReviewOpen] = useState(false);
 
   // ✅ Fetch Postpone History
   useEffect(() => {
@@ -68,15 +67,17 @@ const PostponeHistoryModal = ({ open, onClose, task, refreshData, isAdmin }) => 
       try {
         setLoading(true);
         const response = await fetchPostponeHistory(task.cid_task_id);
+
         if (response?.data) {
           setHistory(response.data);
-          const foundPendingRequest = response.data.find((item) => item.status === "pending");
-          setPendingRequest(foundPendingRequest || null);
+          const pendingRequest = response.data.find((item) => item.status === "pending");
+          setPendingRequest(pendingRequest || null);
         } else {
           throw new Error("Failed to fetch postpone history.");
         }
       } catch (error) {
         console.error("Error fetching postpone history:", error);
+        showNotification(error.message || "Failed to fetch data.", "error");
         setHistory([]);
         setPendingRequest(null);
       } finally {
@@ -84,10 +85,8 @@ const PostponeHistoryModal = ({ open, onClose, task, refreshData, isAdmin }) => 
       }
     };
 
-    if (open) {
-      fetchData();
-    }
-  }, [open, task.cid_task_id]);
+    if (open) fetchData();
+  }, [open, task.cid_task_id, showNotification]);
 
   // ✅ Handle Submit Request for Extension
   const handleRequestSubmit = async () => {
@@ -141,14 +140,14 @@ const PostponeHistoryModal = ({ open, onClose, task, refreshData, isAdmin }) => 
 
   return (
     <>
-      {/* Main Modal */}
+      {/* ✅ Main Modal */}
       <Dialog open={open} onClose={onClose} maxWidth="md" fullWidth>
         <DialogTitle className={classes.dialogTitle}>
           Postpone History for Task: {task.task_name} | CID: {task.cid_id}
         </DialogTitle>
         <Divider />
 
-        {/* Content Section */}
+        {/* ✅ Content Section */}
         <DialogContent dividers className={classes.dialogContent}>
           {loading ? (
             <Box display="flex" justifyContent="center" my={4}>
@@ -177,30 +176,34 @@ const PostponeHistoryModal = ({ open, onClose, task, refreshData, isAdmin }) => 
           )}
         </DialogContent>
 
-        {/* Actions */}
+        {/* ✅ Actions */}
         <DialogActions>
+          {/* ✅ User - Submit Extension Request */}
           {!isAdmin && (
             <Button
               onClick={() => setRequestOpen(true)}
               disabled={!!pendingRequest || loading}
               className={classes.button}
-              sx={{ backgroundColor: pendingRequest ? '#ccc' : '#00897b', color: 'white', '&:hover': { backgroundColor: pendingRequest ? '#ccc' : '#00796b' } }}
+              sx={{ backgroundColor: pendingRequest ? '#ccc' : '#00897b', color: 'white' }}
             >
               {pendingRequest ? 'Pending Request' : 'Request Extension'}
             </Button>
           )}
 
+          {/* ✅ Admin - Review Pending Requests */}
           {isAdmin && pendingRequest && (
             <Button
               onClick={() => setReviewOpen(true)}
               disabled={loading}
               className={classes.button}
-              sx={{ backgroundColor: '#00897b', color: 'white', '&:hover': { backgroundColor: '#00796b' } }}
+              sx={{ backgroundColor: '#00897b', color: 'white' }}
             >
               Review Extension
             </Button>
           )}
-          <Button onClick={onClose} color="error" className={classes.button} sx={{ backgroundColor: '#b71c1c', color: 'white', '&:hover': { backgroundColor: '#c62828' } }}>
+
+          {/* ✅ Close Button */}
+          <Button onClick={onClose} color="error" className={classes.button}>
             Close
           </Button>
         </DialogActions>
