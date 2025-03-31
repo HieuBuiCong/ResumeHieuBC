@@ -98,3 +98,140 @@ const PostponeHistoryModal = ({ open, onClose, task, isAdmin, refreshData }) => 
     }
   };
 };
+
+  return (
+    <>
+      <Dialog open={open} onClose={onClose} maxWidth="md" fullWidth>
+        <DialogTitle className={classes.dialogTitle}>
+          Postpone History for Task: {task.task_name} | CID: {task.cid_id}
+        </DialogTitle>
+        <Divider />
+
+        <DialogContent dividers className={classes.dialogContent}>
+          {loading ? (
+            <Box display="flex" justifyContent="center" my={4}>
+              <CircularProgress />
+            </Box>
+          ) : history.length === 0 ? (
+            <Typography>No postpone history available for this task.</Typography>
+          ) : (
+            history.map((record, index) => (
+              <Box key={record.postpone_id || index} sx={{ mb: 3 }}>
+                <Typography variant="subtitle1" sx={{ fontWeight: 'bold' }}>
+                  {index + 1}. Requested by: {record.username}
+                </Typography>
+                <Typography><strong>Reason:</strong> {record.reason}</Typography>
+                <Typography><strong>Proposed Date:</strong> {new Date(record.proposed_date).toLocaleDateString()}</Typography>
+                <Typography><strong>Status:</strong> {record.status}</Typography>
+                {record.approver_name && (
+                  <Typography><strong>Approved By:</strong> {record.approver_name}</Typography>
+                )}
+                {record.approver_reason && (
+                  <Typography><strong>Approver Reason:</strong> {record.approver_reason}</Typography>
+                )}
+                <Divider sx={{ mt: 2 }} />
+              </Box>
+            ))
+          )}
+        </DialogContent>
+
+        <DialogActions>
+          {!isAdmin && (
+            <Button
+              onClick={() => setExtensionRequestOpen(true)}
+              disabled={pendingRequest || loading}
+              className={classes.button}
+              sx={{ backgroundColor: pendingRequest ? '#ccc' : '#00897b', color: 'white', '&:hover': { backgroundColor: pendingRequest ? '#ccc' : '#00796b' } }}
+            >
+              {pendingRequest ? 'Pending Request' : 'Request Extension'}
+            </Button>
+          )}
+
+          {isAdmin && hasPendingRequest && (
+            <Button
+              onClick={() => setReviewOpen(true)}
+              disabled={loading}
+              className={classes.button}
+              sx={{ backgroundColor: '#00897b', color: 'white', '&:hover': { backgroundColor: '#00796b' } }}
+            >
+              Review Extension
+            </Button>
+          )}
+          <Button onClick={onClose} color="error" className={classes.button} sx={{ backgroundColor: '#b71c1c', color: 'white', '&:hover': { backgroundColor: '#c62828' } }}>
+            Close
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Extension Request Dialog */}
+      <Dialog open={extensionRequestOpen} onClose={() => setExtensionRequestOpen(false)} maxWidth="sm" fullWidth>
+        <DialogTitle className={classes.dialogTitle}>Request Deadline Extension</DialogTitle>
+        <DialogContent className={classes.dialogContent}>
+          <DialogContentText>Please provide a reason and proposed new deadline.</DialogContentText>
+          <TextField
+            label="Reason"
+            multiline
+            rows={4}
+            fullWidth
+            value={extensionReason}
+            onChange={(e) => setExtensionReason(e.target.value)}
+            className={classes.textField}
+          />
+          <TextField
+            label="Proposed Date"
+            type="date"
+            fullWidth
+            InputLabelProps={{ shrink: true }}
+            value={proposedDate}
+            onChange={(e) => setProposedDate(e.target.value)}
+            className={classes.textField}
+          />
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setExtensionRequestOpen(false)} color="inherit" className={classes.button}>
+            Cancel
+          </Button>
+          <Button onClick={handleExtensionSubmit} color="success" className={classes.button} disabled={loading}>
+            Submit Request
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Admin Review Dialog */}
+      <Dialog open={reviewOpen} onClose={() => setReviewOpen(false)} maxWidth="sm" fullWidth>
+        <DialogTitle className={classes.dialogTitle}>Review Extension Request</DialogTitle>
+        <DialogContent className={classes.dialogContent}>
+          <DialogContentText>Select your decision and provide a reason for approval or rejection.</DialogContentText>
+          <Select
+            value={decision}
+            onChange={(e) => setDecision(e.target.value)}
+            fullWidth
+            className={classes.select}
+          >
+            <MenuItem value="approve">Approve</MenuItem>
+            <MenuItem value="reject">Reject</MenuItem>
+          </Select>
+          <TextField
+            label="Approval Reason"
+            multiline
+            rows={4}
+            fullWidth
+            value={approvalReason}
+            onChange={(e) => setApprovalReason(e.target.value)}
+            className={classes.textField}
+          />
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setReviewOpen(false)} color="inherit" className={classes.button}>
+            Cancel
+          </Button>
+          <Button onClick={handleReviewSubmit} color="success" className={classes.button} disabled={loading}>
+            Submit Review
+          </Button>
+        </DialogActions>
+      </Dialog>
+    </>
+  );
+};
+
+export default PostponeHistoryModal;
