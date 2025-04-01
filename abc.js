@@ -1,51 +1,22 @@
-import { saveAttachmentToDB } from '../services/attachmentService.js';
+import pool from '../config/database.js';
 
-// Upload attachment for CID
-export const uploadCIDAttachment = async (req, res) => {
-  try {
-    const { cid_id } = req.params;
-    const file = req.file;
+export const saveAttachmentToDB = async ({
+  file_name,
+  file_path,
+  file_type,
+  file_size,
+  cid_id = null,
+  cid_task_id = null,
+  uploaded_by,
+}) => {
+  const query = `
+    INSERT INTO attachments (file_name, file_path, file_type, file_size, cid_id, cid_task_id, uploaded_by)
+    VALUES ($1, $2, $3, $4, $5, $6, $7)
+    RETURNING *;
+  `;
 
-    if (!file) {
-      throw new Error('File is required.');
-    }
+  const values = [file_name, file_path, file_type, file_size, cid_id, cid_task_id, uploaded_by];
 
-    const attachment = await saveAttachmentToDB({
-      file_name: file.originalname,
-      file_path: file.path,
-      file_type: file.mimetype,
-      file_size: file.size,
-      cid_id,
-      uploaded_by: req.user.id,
-    });
-
-    res.status(201).json({ success: true, data: attachment });
-  } catch (error) {
-    res.status(500).json({ success: false, error: error.message });
-  }
-};
-
-// Upload attachment for CID Task
-export const uploadCIDTaskAttachment = async (req, res) => {
-  try {
-    const { cid_task_id } = req.params;
-    const file = req.file;
-
-    if (!file) {
-      throw new Error('File is required.');
-    }
-
-    const attachment = await saveAttachmentToDB({
-      file_name: file.originalname,
-      file_path: file.path,
-      file_type: file.mimetype,
-      file_size: file.size,
-      cid_task_id,
-      uploaded_by: req.user.id,
-    });
-
-    res.status(201).json({ success: true, data: attachment });
-  } catch (error) {
-    res.status(500).json({ success: false, error: error.message });
-  }
+  const { rows } = await pool.query(query, values);
+  return rows[0];
 };
