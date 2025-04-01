@@ -1,31 +1,13 @@
-// fileUpload.js
-import multer from 'multer';
-import path from 'path';
+import express from 'express';
+import { uploadCIDAttachment, uploadCIDTaskAttachment } from '../controllers/attachmentController.js';
+import upload from '../middlewares/fileUpload.js';
 
-// set up local storage configuration
-const storage = multer.diskStorage({
-  destination: (req, file, cb) => {
-    cb(null, './uploads'); // files will be stored in uploads folder
-  },
-  filename: (req, file, cb) => {
-    cb(null, `${Date.now()}_${file.originalname}`);
-  },
-});
+const router = express.Router();
 
-// configure file filter and size
-const upload = multer({
-  storage,
-  limits: { fileSize: 20 * 1024 * 1024 }, // limit 20MB
-  fileFilter: (req, file, cb) => {
-    const fileTypes = /jpeg|jpg|png|pdf|doc|docx|xlsx|xls/;
-    const mimeType = fileTypes.test(file.mimetype);
-    const extname = fileTypes.test(path.extname(file.originalname).toLowerCase());
+// CID attachments
+router.post('/cid/:cid_id/attachments', upload.single('file'), uploadCIDAttachment);
 
-    if (mimeType && extname) {
-      return cb(null, true);
-    }
-    cb(new Error('File type not supported.'));
-  },
-});
+// CID Task attachments
+router.post('/cid-task/:cid_task_id/attachments', upload.single('file'), uploadCIDTaskAttachment);
 
-export default upload;
+export default router;
