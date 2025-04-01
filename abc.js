@@ -1,13 +1,51 @@
-import express from 'express';
-import { uploadCIDAttachment, uploadCIDTaskAttachment } from '../controllers/attachmentController.js';
-import upload from '../middlewares/fileUpload.js';
+import { saveAttachmentToDB } from '../services/attachmentService.js';
 
-const router = express.Router();
+// Upload attachment for CID
+export const uploadCIDAttachment = async (req, res) => {
+  try {
+    const { cid_id } = req.params;
+    const file = req.file;
 
-// CID attachments
-router.post('/cid/:cid_id/attachments', upload.single('file'), uploadCIDAttachment);
+    if (!file) {
+      throw new Error('File is required.');
+    }
 
-// CID Task attachments
-router.post('/cid-task/:cid_task_id/attachments', upload.single('file'), uploadCIDTaskAttachment);
+    const attachment = await saveAttachmentToDB({
+      file_name: file.originalname,
+      file_path: file.path,
+      file_type: file.mimetype,
+      file_size: file.size,
+      cid_id,
+      uploaded_by: req.user.id,
+    });
 
-export default router;
+    res.status(201).json({ success: true, data: attachment });
+  } catch (error) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+};
+
+// Upload attachment for CID Task
+export const uploadCIDTaskAttachment = async (req, res) => {
+  try {
+    const { cid_task_id } = req.params;
+    const file = req.file;
+
+    if (!file) {
+      throw new Error('File is required.');
+    }
+
+    const attachment = await saveAttachmentToDB({
+      file_name: file.originalname,
+      file_path: file.path,
+      file_type: file.mimetype,
+      file_size: file.size,
+      cid_task_id,
+      uploaded_by: req.user.id,
+    });
+
+    res.status(201).json({ success: true, data: attachment });
+  } catch (error) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+};
