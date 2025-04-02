@@ -1,8 +1,8 @@
 export const sendCIDSummaryEmail = async (req, res) => {
   try {
     const { cid_id } = req.params;
- 
-    // 🔹 1) Fetch CID & Product Details
+
+    // 1) Fetch CID & Product Details
     const cidQuery = `
       SELECT
         c.cid_id, c.prev_rev, c.next_rev, c.status, c.deadline,
@@ -12,13 +12,12 @@ export const sendCIDSummaryEmail = async (req, res) => {
       WHERE c.cid_id = $1;
     `;
     const { rows: cidRows } = await pool.query(cidQuery, [cid_id]);
- 
     if (cidRows.length === 0) {
       return res.status(404).json({ success: false, message: "CID not found" });
     }
     const cidDetails = cidRows[0];
- 
-    // 🔹 2) Fetch All Related CID Tasks
+
+    // 2) Fetch CID Tasks
     const taskQuery = `
       SELECT
         ct.cid_task_id, ct.task_category_id, tc.task_name,
@@ -30,23 +29,34 @@ export const sendCIDSummaryEmail = async (req, res) => {
       WHERE ct.cid_id = $1;
     `;
     const { rows: taskRows } = await pool.query(taskQuery, [cid_id]);
- 
-    // 🔹 3) Fetch Reference Email List
-    const referenceEmailQuery = `
-      SELECT email FROM reference_email_list;
-    `;
-    const { rows: referenceEmails } = await pool.query(referenceEmailQuery);
-    const referenceEmailList = referenceEmails.map(row => row.email);
- 
-    // 🔹 4) Collect All Emails for the Mail Loop
+
+    // 3) Reference Emails
+    const refQuery = `SELECT email FROM reference_email_list;`;
+    const { rows: refEmails } = await pool.query(refQuery);
+    const referenceEmailList = refEmails.map(r => r.email);
+
     const taskAssigneeEmails = taskRows.map(task => task.assignee_email);
     const uniqueRecipients = [...new Set([...taskAssigneeEmails, ...referenceEmailList])];
- 
+
     if (uniqueRecipients.length === 0) {
-      return res.status(400).json({ success: false, message: "No recipients found for this CID." });
+      return res.status(400).json({ success: false, message: "No recipients found." });
     }
- 
-    // 🔹 5) Format Task Table in HTML
+
+    // 4) Fetch attachments
+    const attachmentQuery = `SELECT file_name, file_path FROM attachments WHERE cid_id = $1`;
+    const { rows: attachments } = await pool.query(attachmentQuery, [cid_id]);
+
+    const attachmentLinks = attachments.length
+      ? `
+        <ul>
+          ${attachments.map(att => `
+            <li><a href="${process.env.BASE_URL}/${att.file_path}" target="_blank">${att.file_name}</a></li>
+          `).join('')}
+        </ul>
+      `
+      : `<p>No attachments for this CID.</p>`;
+
+    // 5) Task Table HTML
     const taskTableHtml = taskRows.length
       ? `
         <table border="1" cellpadding="5" cellspacing="0">
@@ -71,14 +81,14 @@ export const sendCIDSummaryEmail = async (req, res) => {
         </table>
       `
       : `<p>No tasks available for this CID.</p>`;
- 
-    // 🔹 6) Format Email Content
+
+    // 6) Email Content
     const subject = `📌 CID #${cidDetails.cid_id} - Summary Report`;
- 
+
     const content = `
       <p>Hello,</p>
       <p>Here is the summary of CID <strong>#${cidDetails.cid_id}</strong>.</p>
- 
+
       <h3>🔹 CID Details:</h3>
       <ul>
         <li><strong>CID ID:</strong> ${cidDetails.cid_id}</li>
@@ -87,7 +97,7 @@ export const sendCIDSummaryEmail = async (req, res) => {
         <li><strong>Status:</strong> ${cidDetails.status}</li>
         <li><strong>Deadline:</strong> ${cidDetails.deadline ? new Date(cidDetails.deadline).toLocaleDateString() : "N/A"}</li>
       </ul>
- 
+
       <h3>🔹 Product Details:</h3>
       <ul>
         <li><strong>Part Number:</strong> ${cidDetails.part_number}</li>
@@ -95,26 +105,29 @@ export const sendCIDSummaryEmail = async (req, res) => {
         <li><strong>Model:</strong> ${cidDetails.model}</li>
         <li><strong>Owner:</strong> ${cidDetails.owner}</li>
       </ul>
- 
+
       <h3>🔹 Task Overview:</h3>
       ${taskTableHtml}
- 
+
+      <h3>📎 Attached Files:</h3>
+      ${attachmentLinks}
+
       <p>Best regards,<br>Your System</p>
     `;
- 
-    // 🔹 7) Send Email
+
+    // 7) Send Email
     await sendEmail(uniqueRecipients.join(","), subject, content, true);
- 
+
     console.log(`📧 CID Summary email sent for CID #${cid_id} to:`, uniqueRecipients);
-    
+
     res.status(200).json({
       success: true,
       message: `CID Summary email sent successfully.`,
       recipients: uniqueRecipients,
     });
- 
+
   } catch (emailError) {
     console.error("❌ Error sending CID summary email:", emailError);
-    res.status(500).json({ success: false, message: `Failed to send CID summary email: ${emailError.message}`});
+    res.status(500).json({ success: false, message: `Failed to send CID summary email: ${emailError.message}` });
   }
 };
