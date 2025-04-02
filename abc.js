@@ -4,7 +4,6 @@ import MainLayout from '../components/Layout/MainLayout.jsx';
 import {
   Box,
   Typography,
-  Paper,
   Grid,
   Card,
   CardContent
@@ -68,6 +67,12 @@ const titleStyle = {
   color: '#333'
 };
 
+const labelTextStyle = {
+  fill: '#212121',
+  fontSize: 12,
+  fontWeight: 500
+};
+
 const DashboardPage = () => {
   const { isAuthenticated } = useContext(AuthContext);
 
@@ -91,12 +96,14 @@ const DashboardPage = () => {
                     <Tooltip cursor={{ fill: '#f5f5f5' }} />
                     <Legend iconType="circle" />
                     <Bar dataKey="Done" stackId="a" fill="#4CAF50" radius={[6, 6, 0, 0]}>
-                      <LabelList dataKey="Done" position="top" fill="#333" fontSize={12} />
+                      <LabelList dataKey="Done" position="top" style={labelTextStyle} />
                     </Bar>
                     <Bar dataKey="OnGoing" stackId="a" fill="#3F51B5" radius={[6, 6, 0, 0]}>
-                      <LabelList dataKey="OnGoing" position="top" fill="#333" fontSize={12} />
+                      <LabelList dataKey="OnGoing" position="top" style={labelTextStyle} />
                     </Bar>
-                    <Bar dataKey="Total" fill="#FFCC80" radius={[6, 6, 0, 0]} />
+                    <Bar dataKey="Total" fill="#FFCC80" radius={[6, 6, 0, 0]}>
+                      <LabelList dataKey="Total" position="top" style={labelTextStyle} />
+                    </Bar>
                   </BarChart>
                 </ResponsiveContainer>
               </CardContent>
@@ -114,8 +121,12 @@ const DashboardPage = () => {
                     <YAxis stroke="#555" />
                     <Tooltip cursor={{ fill: '#f5f5f5' }} />
                     <Legend iconType="circle" />
-                    <Bar dataKey="ProductWaitingArrival" fill="#4CAF50" radius={[6, 6, 0, 0]} />
-                    <Bar dataKey="Other" fill="#303F9F" radius={[6, 6, 0, 0]} />
+                    <Bar dataKey="ProductWaitingArrival" fill="#4CAF50" radius={[6, 6, 0, 0]}>
+                      <LabelList dataKey="ProductWaitingArrival" position="top" style={labelTextStyle} />
+                    </Bar>
+                    <Bar dataKey="Other" fill="#303F9F" radius={[6, 6, 0, 0]}>
+                      <LabelList dataKey="Other" position="top" style={labelTextStyle} />
+                    </Bar>
                   </BarChart>
                 </ResponsiveContainer>
               </CardContent>
@@ -133,8 +144,12 @@ const DashboardPage = () => {
                     <YAxis stroke="#555" />
                     <Tooltip cursor={{ fill: '#f5f5f5' }} />
                     <Legend iconType="circle" />
-                    <Bar dataKey="ProductWaitingArrival" fill="#4CAF50" radius={[6, 6, 0, 0]} />
-                    <Bar dataKey="Other" fill="#303F9F" radius={[6, 6, 0, 0]} />
+                    <Bar dataKey="ProductWaitingArrival" fill="#4CAF50" radius={[6, 6, 0, 0]}>
+                      <LabelList dataKey="ProductWaitingArrival" position="top" style={labelTextStyle} />
+                    </Bar>
+                    <Bar dataKey="Other" fill="#303F9F" radius={[6, 6, 0, 0]}>
+                      <LabelList dataKey="Other" position="top" style={labelTextStyle} />
+                    </Bar>
                   </BarChart>
                 </ResponsiveContainer>
               </CardContent>
@@ -152,7 +167,7 @@ const DashboardPage = () => {
                     <YAxis stroke="#555" />
                     <Tooltip cursor={{ fill: '#f5f5f5' }} />
                     <Bar dataKey="quantity" fill="#4CAF50" radius={[6, 6, 0, 0]}>
-                      <LabelList dataKey="quantity" position="top" fill="#333" fontSize={12} />
+                      <LabelList dataKey="quantity" position="top" style={labelTextStyle} />
                     </Bar>
                   </BarChart>
                 </ResponsiveContainer>
