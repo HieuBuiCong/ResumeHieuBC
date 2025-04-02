@@ -1,8 +1,33 @@
 import React, { useContext } from 'react';
 import { AuthContext } from '../context/AuthContext.jsx';
 import MainLayout from '../components/Layout/MainLayout.jsx';
-import { Box, Typography, Paper, Grid, Card, CardContent } from '@mui/material';
-import { PieChart, Pie, Cell, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
+import {
+  Box,
+  Typography,
+  Paper,
+  Grid,
+  Card,
+  CardContent
+} from '@mui/material';
+import {
+  PieChart,
+  Pie,
+  Cell,
+  BarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  Legend,
+  ResponsiveContainer,
+  LabelList,
+  Radar,
+  RadarChart,
+  PolarGrid,
+  PolarAngleAxis,
+  PolarRadiusAxis
+} from 'recharts';
 
 const pieData = [
   { name: 'America', value: 43.8 },
@@ -23,6 +48,23 @@ const barData = [
   { name: 'Jul', TeamA: 40, TeamB: 30 },
   { name: 'Aug', TeamA: 25, TeamB: 70 },
   { name: 'Sep', TeamA: 55, TeamB: 25 },
+];
+
+const radarData = [
+  { subject: 'Math', A: 120, B: 110, C: 95 },
+  { subject: 'English', A: 98, B: 130, C: 85 },
+  { subject: 'History', A: 86, B: 90, C: 100 },
+  { subject: 'Physics', A: 99, B: 100, C: 110 },
+  { subject: 'Geography', A: 85, B: 95, C: 80 },
+  { subject: 'Chinese', A: 65, B: 70, C: 75 },
+];
+
+const horizontalData = [
+  { name: 'Italy', A: 44, B: 53 },
+  { name: 'Japan', A: 32, B: 55 },
+  { name: 'China', A: 38, B: 41 },
+  { name: 'Canada', A: 50, B: 64 },
+  { name: 'France', A: 13, B: 27 },
 ];
 
 const DashboardPage = () => {
@@ -67,12 +109,16 @@ const DashboardPage = () => {
                       outerRadius={100}
                       fill="#8884d8"
                       dataKey="value"
+                      nameKey="name"
+                      label
                     >
                       {pieData.map((entry, index) => (
                         <Cell key={`cell-${index}`} fill={pieColors[index % pieColors.length]} />
                       ))}
+                      <LabelList dataKey="value" position="outside" />
                     </Pie>
                     <Tooltip />
+                    <Legend />
                   </PieChart>
                 </ResponsiveContainer>
               </CardContent>
@@ -92,9 +138,57 @@ const DashboardPage = () => {
                     <YAxis />
                     <Tooltip />
                     <Legend />
-                    <Bar dataKey="TeamA" fill="#003f8a" />
-                    <Bar dataKey="TeamB" fill="#7fbfff" />
+                    <Bar dataKey="TeamA" fill="#003f8a">
+                      <LabelList dataKey="TeamA" position="top" />
+                    </Bar>
+                    <Bar dataKey="TeamB" fill="#7fbfff">
+                      <LabelList dataKey="TeamB" position="top" />
+                    </Bar>
                   </BarChart>
+                </ResponsiveContainer>
+              </CardContent>
+            </Card>
+          </Grid>
+
+          <Grid item xs={12} md={6}>
+            <Card sx={{ borderRadius: 3 }}>
+              <CardContent>
+                <Typography variant="subtitle1" gutterBottom>
+                  Conversion rates <Typography variant="caption">(+43%) than last year</Typography>
+                </Typography>
+                <ResponsiveContainer width="100%" height={250}>
+                  <BarChart data={horizontalData} layout="vertical">
+                    <CartesianGrid strokeDasharray="3 3" />
+                    <XAxis type="number" />
+                    <YAxis dataKey="name" type="category" />
+                    <Tooltip />
+                    <Legend />
+                    <Bar dataKey="A" fill="#5a55ca">
+                      <LabelList dataKey="A" position="right" />
+                    </Bar>
+                    <Bar dataKey="B" fill="#5bb0f6">
+                      <LabelList dataKey="B" position="right" />
+                    </Bar>
+                  </BarChart>
+                </ResponsiveContainer>
+              </CardContent>
+            </Card>
+          </Grid>
+
+          <Grid item xs={12} md={6}>
+            <Card sx={{ borderRadius: 3 }}>
+              <CardContent>
+                <Typography variant="subtitle1" gutterBottom>Current subject</Typography>
+                <ResponsiveContainer width="100%" height={250}>
+                  <RadarChart cx="50%" cy="50%" outerRadius="80%" data={radarData}>
+                    <PolarGrid />
+                    <PolarAngleAxis dataKey="subject" />
+                    <PolarRadiusAxis />
+                    <Radar name="Series 1" dataKey="A" stroke="#8884d8" fill="#8884d8" fillOpacity={0.6} />
+                    <Radar name="Series 2" dataKey="B" stroke="#82ca9d" fill="#82ca9d" fillOpacity={0.6} />
+                    <Radar name="Series 3" dataKey="C" stroke="#ffc658" fill="#ffc658" fillOpacity={0.6} />
+                    <Legend />
+                  </RadarChart>
                 </ResponsiveContainer>
               </CardContent>
             </Card>
