@@ -96,7 +96,7 @@ const DashboardPage = () => {
                     <YAxis stroke="#555" />
                     <Tooltip cursor={{ fill: '#f5f5f5' }} />
                     <Legend iconType="circle" />
-                    <Bar dataKey="Done" stackId="a" fill="#4CAF50" radius={[6, 6, 0, 0]}>
+                    <Bar dataKey="Done" stackId="a" fill="#4CAF50">
                       <LabelList dataKey="Done" position="top" style={labelTextStyle} />
                     </Bar>
                     <Bar dataKey="OnGoing" stackId="a" fill="#3F51B5" radius={[6, 6, 0, 0]}>
