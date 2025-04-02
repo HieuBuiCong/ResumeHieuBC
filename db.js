@@ -4,7 +4,6 @@ import MainLayout from '../components/Layout/MainLayout.jsx';
 import {
   Box,
   Typography,
-  Paper,
   Grid,
   Card,
   CardContent
@@ -33,7 +32,7 @@ const monthlyStatusData = [
   { month: 'Dec', Done: 302, OnGoing: 61, Total: 368 },
   { month: 'Jan', Done: 332, OnGoing: 67, Total: 393 },
   { month: 'Feb', Done: 344, OnGoing: 60, Total: 406 },
-  { month: 'March', Done: 358, OnGoing: 64, Total: 422 }
+  { month: 'Mar', Done: 358, OnGoing: 64, Total: 422 }
 ];
 
 const ongoingTypeData = [
@@ -55,35 +54,80 @@ const ongoingStatusData = [
   { status: 'Pending over 6 months', ProductWaitingArrival: 18, Other: 3 }
 ];
 
+const chartCardStyle = {
+  borderRadius: 3,
+  boxShadow: 3,
+  p: 2,
+  backgroundColor: 'rgba(255, 255, 255, 0.8)',
+  backdropFilter: 'blur(6px)'
+};
+
+const titleStyle = {
+  fontSize: '1.05rem',
+  fontWeight: 600,
+  color: '#333'
+};
+
+const labelTextStyle = {
+  fill: '#212121',
+  fontSize: 12,
+  fontWeight: 500
+};
+
 const DashboardPage = () => {
   const { isAuthenticated } = useContext(AuthContext);
 
   return (
     <MainLayout>
-      <Box sx={{ padding: 4 }}>
-        <Typography variant="h5" gutterBottom>
-          Interrupter CID Overview on March/2025
+      <Box sx={{ padding: 4, marginTop: '50px' }}>
+        <Typography variant="h5" gutterBottom fontWeight={700} color="primary.dark">
+          🎯 Interrupter CID Overview ✅
         </Typography>
 
         <Grid container spacing={3}>
           <Grid item xs={12}>
-            <Card sx={{ borderRadius: 3 }}>
+            <Card sx={chartCardStyle}>
               <CardContent>
-                <Typography variant="subtitle1">CID status per month</Typography>
+                <Typography sx={titleStyle}>CID status per month</Typography>
+                <ResponsiveContainer width="100%" height={360}>
+                  <BarChart data={monthlyStatusData} barCategoryGap={8}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="#e0e0e0" />
+                    <XAxis dataKey="month" stroke="#555" />
+                    <YAxis stroke="#555" />
+                    <Tooltip cursor={{ fill: '#f5f5f5' }} />
+                    <Legend iconType="circle" />
+                    <Bar dataKey="Done" stackId="a" fill="#4CAF50" radius={[6, 6, 0, 0]}>
+                      <LabelList dataKey="Done" position="top" style={labelTextStyle} />
+                    </Bar>
+                    <Bar dataKey="OnGoing" stackId="a" fill="#3F51B5" radius={[6, 6, 0, 0]}>
+                      <LabelList dataKey="OnGoing" position="top" style={labelTextStyle} />
+                    </Bar>
+                    <Bar dataKey="Total" fill="#FFCC80" radius={[6, 6, 0, 0]}>
+                      <LabelList dataKey="Total" position="top" style={labelTextStyle} />
+                    </Bar>
+                  </BarChart>
+                </ResponsiveContainer>
+              </CardContent>
+            </Card>
+          </Grid>
+
+          <Grid item xs={12} md={6}>
+            <Card sx={chartCardStyle}>
+              <CardContent>
+                <Typography sx={titleStyle}>On-Going CID (by Type)</Typography>
                 <ResponsiveContainer width="100%" height={300}>
-                  <BarChart data={monthlyStatusData}>
-                    <CartesianGrid strokeDasharray="3 3" />
-                    <XAxis dataKey="month" />
-                    <YAxis />
-                    <Tooltip />
-                    <Legend />
-                    <Bar dataKey="Done" stackId="a" fill="#4CAF50">
-                      <LabelList dataKey="Done" position="insideTop" />
+                  <BarChart data={ongoingTypeData} barGap={10}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="#e0e0e0" />
+                    <XAxis dataKey="type" tick={{ fontSize: 11 }} stroke="#555" />
+                    <YAxis stroke="#555" />
+                    <Tooltip cursor={{ fill: '#f5f5f5' }} />
+                    <Legend iconType="circle" />
+                    <Bar dataKey="ProductWaitingArrival" fill="#4CAF50" radius={[6, 6, 0, 0]}>
+                      <LabelList dataKey="ProductWaitingArrival" position="top" style={labelTextStyle} />
                     </Bar>
-                    <Bar dataKey="OnGoing" stackId="a" fill="#3F51B5">
-                      <LabelList dataKey="OnGoing" position="insideTop" />
+                    <Bar dataKey="Other" fill="#303F9F" radius={[6, 6, 0, 0]}>
+                      <LabelList dataKey="Other" position="top" style={labelTextStyle} />
                     </Bar>
-                    <Bar dataKey="Total" fill="#FFCC80" />
                   </BarChart>
                 </ResponsiveContainer>
               </CardContent>
@@ -91,18 +135,22 @@ const DashboardPage = () => {
           </Grid>
 
           <Grid item xs={12} md={6}>
-            <Card sx={{ borderRadius: 3 }}>
+            <Card sx={chartCardStyle}>
               <CardContent>
-                <Typography variant="subtitle1">On-Going CID (by Type)</Typography>
-                <ResponsiveContainer width="100%" height={250}>
-                  <BarChart data={ongoingTypeData}>
-                    <CartesianGrid strokeDasharray="3 3" />
-                    <XAxis dataKey="type" tick={{ fontSize: 10 }} />
-                    <YAxis />
-                    <Tooltip />
-                    <Legend />
-                    <Bar dataKey="ProductWaitingArrival" fill="#4CAF50" />
-                    <Bar dataKey="Other" fill="#303F9F" />
+                <Typography sx={titleStyle}>On-Going CID (by Status)</Typography>
+                <ResponsiveContainer width="100%" height={300}>
+                  <BarChart data={ongoingStatusData} barGap={10}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="#e0e0e0" />
+                    <XAxis dataKey="status" tick={{ fontSize: 12 }} stroke="#555" />
+                    <YAxis stroke="#555" />
+                    <Tooltip cursor={{ fill: '#f5f5f5' }} />
+                    <Legend iconType="circle" />
+                    <Bar dataKey="ProductWaitingArrival" fill="#4CAF50" radius={[6, 6, 0, 0]}>
+                      <LabelList dataKey="ProductWaitingArrival" position="top" style={labelTextStyle} />
+                    </Bar>
+                    <Bar dataKey="Other" fill="#303F9F" radius={[6, 6, 0, 0]}>
+                      <LabelList dataKey="Other" position="top" style={labelTextStyle} />
+                    </Bar>
                   </BarChart>
                 </ResponsiveContainer>
               </CardContent>
@@ -110,35 +158,18 @@ const DashboardPage = () => {
           </Grid>
 
           <Grid item xs={12} md={6}>
-            <Card sx={{ borderRadius: 3 }}>
+            <Card sx={chartCardStyle}>
               <CardContent>
-                <Typography variant="subtitle1">On-Going CID (by Status)</Typography>
-                <ResponsiveContainer width="100%" height={250}>
-                  <BarChart data={ongoingStatusData}>
-                    <CartesianGrid strokeDasharray="3 3" />
-                    <XAxis dataKey="status" tick={{ fontSize: 12 }} />
-                    <YAxis />
-                    <Tooltip />
-                    <Legend />
-                    <Bar dataKey="ProductWaitingArrival" fill="#4CAF50" />
-                    <Bar dataKey="Other" fill="#303F9F" />
-                  </BarChart>
-                </ResponsiveContainer>
-              </CardContent>
-            </Card>
-          </Grid>
-
-          <Grid item xs={12}>
-            <Card sx={{ borderRadius: 3 }}>
-              <CardContent>
-                <Typography variant="subtitle1">On-Going CID (by Department)</Typography>
-                <ResponsiveContainer width="100%" height={250}>
-                  <BarChart data={ongoingDeptData}>
-                    <CartesianGrid strokeDasharray="3 3" />
-                    <XAxis dataKey="department" tick={{ fontSize: 12 }} />
-                    <YAxis />
-                    <Tooltip />
-                    <Bar dataKey="quantity" fill="#4CAF50" />
+                <Typography sx={titleStyle}>On-Going CID (by Department)</Typography>
+                <ResponsiveContainer width="100%" height={300}>
+                  <BarChart data={ongoingDeptData} barGap={10}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="#e0e0e0" />
+                    <XAxis dataKey="department" tick={{ fontSize: 12 }} stroke="#555" />
+                    <YAxis stroke="#555" />
+                    <Tooltip cursor={{ fill: '#f5f5f5' }} />
+                    <Bar dataKey="quantity" fill="#4CAF50" radius={[6, 6, 0, 0]}>
+                      <LabelList dataKey="quantity" position="top" style={labelTextStyle} />
+                    </Bar>
                   </BarChart>
                 </ResponsiveContainer>
               </CardContent>
