@@ -1,133 +1,119 @@
-export const sendCIDSummaryEmail = async (req, res) => {
-  try {
-    const { cid_id } = req.params;
+import React, { useContext } from 'react';
+import { AuthContext } from '../context/AuthContext.jsx';
+import MainLayout from '../components/Layout/MainLayout.jsx';
+import { Box, Typography, Paper, Grid, Card, CardContent } from '@mui/material';
+import { PieChart, Pie, Cell, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 
-    // 1) Fetch CID & Product Details
-    const cidQuery = `
-      SELECT
-        c.cid_id, c.prev_rev, c.next_rev, c.status, c.deadline,
-        p.product_id, p.part_number, p.part_name, p.model, p.owner
-      FROM cid c
-      LEFT JOIN product p ON c.product_id = p.product_id
-      WHERE c.cid_id = $1;
-    `;
-    const { rows: cidRows } = await pool.query(cidQuery, [cid_id]);
-    if (cidRows.length === 0) {
-      return res.status(404).json({ success: false, message: "CID not found" });
-    }
-    const cidDetails = cidRows[0];
+const pieData = [
+  { name: 'America', value: 43.8 },
+  { name: 'Asia', value: 31.3 },
+  { name: 'Europe', value: 18.8 },
+  { name: 'Africa', value: 6.3 },
+];
 
-    // 2) Fetch CID Tasks
-    const taskQuery = `
-      SELECT
-        ct.cid_task_id, ct.task_category_id, tc.task_name,
-        u.username AS assignee_name, u.email AS assignee_email,
-        ct.status, ct.deadline
-      FROM cid_task ct
-      JOIN users u ON ct.assignee_id = u.user_id
-      JOIN task_category tc ON ct.task_category_id = tc.task_category_id
-      WHERE ct.cid_id = $1;
-    `;
-    const { rows: taskRows } = await pool.query(taskQuery, [cid_id]);
+const pieColors = ['#007bff', '#fbbc04', '#6f42c1', '#ea4335'];
 
-    // 3) Reference Emails
-    const refQuery = `SELECT email FROM reference_email_list;`;
-    const { rows: refEmails } = await pool.query(refQuery);
-    const referenceEmailList = refEmails.map(r => r.email);
+const barData = [
+  { name: 'Jan', TeamA: 40, TeamB: 50 },
+  { name: 'Feb', TeamA: 30, TeamB: 70 },
+  { name: 'Mar', TeamA: 20, TeamB: 45 },
+  { name: 'Apr', TeamA: 35, TeamB: 65 },
+  { name: 'May', TeamA: 65, TeamB: 40 },
+  { name: 'Jun', TeamA: 65, TeamB: 35 },
+  { name: 'Jul', TeamA: 40, TeamB: 30 },
+  { name: 'Aug', TeamA: 25, TeamB: 70 },
+  { name: 'Sep', TeamA: 55, TeamB: 25 },
+];
 
-    const taskAssigneeEmails = taskRows.map(task => task.assignee_email);
-    const uniqueRecipients = [...new Set([...taskAssigneeEmails, ...referenceEmailList])];
+const DashboardPage = () => {
+  const { isAuthenticated } = useContext(AuthContext);
 
-    if (uniqueRecipients.length === 0) {
-      return res.status(400).json({ success: false, message: "No recipients found." });
-    }
+  return (
+    <MainLayout>
+      <Box sx={{ padding: 4 }}>
+        <Typography variant="h4" gutterBottom>
+          Hi, Welcome back 👋
+        </Typography>
 
-    // 4) Fetch attachments
-    const attachmentQuery = `SELECT file_name, file_path FROM attachments WHERE cid_id = $1`;
-    const { rows: attachments } = await pool.query(attachmentQuery, [cid_id]);
+        <Grid container spacing={3} mb={4}>
+          {[
+            { title: 'Weekly sales', value: '714k', growth: '+2.6%', color: '#e0f7fa' },
+            { title: 'New users', value: '1.35m', growth: '-0.1%', color: '#f3e5f5' },
+            { title: 'Purchase orders', value: '1.72m', growth: '+2.8%', color: '#fff8e1' },
+            { title: 'Messages', value: '234', growth: '+3.6%', color: '#ffebee' },
+          ].map((item, i) => (
+            <Grid item xs={12} md={3} key={i}>
+              <Paper elevation={3} sx={{ p: 2, bgcolor: item.color, borderRadius: 3 }}>
+                <Typography variant="subtitle2" color="text.secondary">{item.title}</Typography>
+                <Typography variant="h5">{item.value}</Typography>
+                <Typography variant="caption" color="success.main">{item.growth}</Typography>
+              </Paper>
+            </Grid>
+          ))}
+        </Grid>
 
-    const attachmentLinks = attachments.length
-      ? `
-        <ul>
-          ${attachments.map(att => `
-            <li><a href="${process.env.BASE_URL}/${att.file_path}" target="_blank">${att.file_name}</a></li>
-          `).join('')}
-        </ul>
-      `
-      : `<p>No attachments for this CID.</p>`;
+        <Grid container spacing={3}>
+          <Grid item xs={12} md={6}>
+            <Card sx={{ borderRadius: 3 }}>
+              <CardContent>
+                <Typography variant="subtitle1" gutterBottom>Current visits</Typography>
+                <ResponsiveContainer width="100%" height={300}>
+                  <PieChart>
+                    <Pie
+                      data={pieData}
+                      cx="50%"
+                      cy="50%"
+                      labelLine={false}
+                      outerRadius={100}
+                      fill="#8884d8"
+                      dataKey="value"
+                    >
+                      {pieData.map((entry, index) => (
+                        <Cell key={`cell-${index}`} fill={pieColors[index % pieColors.length]} />
+                      ))}
+                    </Pie>
+                    <Tooltip />
+                  </PieChart>
+                </ResponsiveContainer>
+              </CardContent>
+            </Card>
+          </Grid>
 
-    // 5) Task Table HTML
-    const taskTableHtml = taskRows.length
-      ? `
-        <table border="1" cellpadding="5" cellspacing="0">
-          <thead>
-            <tr>
-              <th>Task Name</th>
-              <th>Assignee</th>
-              <th>Status</th>
-              <th>Deadline</th>
-            </tr>
-          </thead>
-          <tbody>
-            ${taskRows.map(task => `
-              <tr>
-                <td>${task.task_name}</td>
-                <td>${task.assignee_name}</td>
-                <td>${task.status}</td>
-                <td>${task.deadline ? new Date(task.deadline).toLocaleDateString() : "N/A"}</td>
-              </tr>
-            `).join('')}
-          </tbody>
-        </table>
-      `
-      : `<p>No tasks available for this CID.</p>`;
+          <Grid item xs={12} md={6}>
+            <Card sx={{ borderRadius: 3 }}>
+              <CardContent>
+                <Typography variant="subtitle1" gutterBottom>
+                  Website visits <Typography variant="caption">(+43%) than last year</Typography>
+                </Typography>
+                <ResponsiveContainer width="100%" height={300}>
+                  <BarChart data={barData}>
+                    <CartesianGrid strokeDasharray="3 3" />
+                    <XAxis dataKey="name" />
+                    <YAxis />
+                    <Tooltip />
+                    <Legend />
+                    <Bar dataKey="TeamA" fill="#003f8a" />
+                    <Bar dataKey="TeamB" fill="#7fbfff" />
+                  </BarChart>
+                </ResponsiveContainer>
+              </CardContent>
+            </Card>
+          </Grid>
+        </Grid>
 
-    // 6) Email Content
-    const subject = `📌 CID #${cidDetails.cid_id} - Summary Report`;
-
-    const content = `
-      <p>Hello,</p>
-      <p>Here is the summary of CID <strong>#${cidDetails.cid_id}</strong>.</p>
-
-      <h3>🔹 CID Details:</h3>
-      <ul>
-        <li><strong>CID ID:</strong> ${cidDetails.cid_id}</li>
-        <li><strong>Previous Revision:</strong> ${cidDetails.prev_rev}</li>
-        <li><strong>Next Revision:</strong> ${cidDetails.next_rev}</li>
-        <li><strong>Status:</strong> ${cidDetails.status}</li>
-        <li><strong>Deadline:</strong> ${cidDetails.deadline ? new Date(cidDetails.deadline).toLocaleDateString() : "N/A"}</li>
-      </ul>
-
-      <h3>🔹 Product Details:</h3>
-      <ul>
-        <li><strong>Part Number:</strong> ${cidDetails.part_number}</li>
-        <li><strong>Part Name:</strong> ${cidDetails.part_name}</li>
-        <li><strong>Model:</strong> ${cidDetails.model}</li>
-        <li><strong>Owner:</strong> ${cidDetails.owner}</li>
-      </ul>
-
-      <h3>🔹 Task Overview:</h3>
-      ${taskTableHtml}
-
-      <h3>📎 Attached Files:</h3>
-      ${attachmentLinks}
-
-      <p>Best regards,<br>Your System</p>
-    `;
-
-    // 7) Send Email
-    await sendEmail(uniqueRecipients.join(","), subject, content, true);
-
-    console.log(`📧 CID Summary email sent for CID #${cid_id} to:`, uniqueRecipients);
-
-    res.status(200).json({
-      success: true,
-      message: `CID Summary email sent successfully.`,
-      recipients: uniqueRecipients,
-    });
-
-  } catch (emailError) {
-    console.error("❌ Error sending CID summary email:", emailError);
-    res.status(500).json({ success: false, message: `Failed to send CID summary email: ${emailError.message}` });
-  }
+        <Box mt={6} display="flex" justifyContent="center">
+          <Paper elevation={4} sx={{ p: 5, bgcolor: 'white', borderRadius: 3, textAlign: 'center', width: 400 }}>
+            <Typography variant="h5" mb={2}>Welcome to the Dashboard</Typography>
+            {isAuthenticated ? (
+              <Typography color="success.main">You are logged in successfully! ✅</Typography>
+            ) : (
+              <Typography color="error.main">You are not authenticated ❌</Typography>
+            )}
+          </Paper>
+        </Box>
+      </Box>
+    </MainLayout>
+  );
 };
+
+export default DashboardPage;
