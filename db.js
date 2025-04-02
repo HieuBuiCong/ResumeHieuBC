@@ -1,51 +1,106 @@
-CREATE TABLE attachments (
-  attachment_id SERIAL PRIMARY KEY,
-  file_name TEXT NOT NULL,
-  file_path TEXT NOT NULL, -- local storage path
-  file_type VARCHAR(100),
-  file_size BIGINT,
-  cid_id INT REFERENCES cid(cid_id) ON DELETE CASCADE,
-  cid_task_id INT REFERENCES cid_task(cid_task_id) ON DELETE CASCADE,
-  uploaded_by INT REFERENCES users(user_id) ON DELETE SET NULL,
-  uploaded_at TIMESTAMP DEFAULT NOW(),
-  UNIQUE (file_path)
-);
+import { uploadTaskAttachment, fetchAttachmentsByTask, deleteAttachment } from "../../services/attachmentService";
+import DeleteIcon from '@mui/icons-material/Delete';
+import AttachFileIcon from '@mui/icons-material/AttachFile';
+------------------------------------------
+// Attachment state
+const [attachments, setAttachments] = useState([]);
+const [attachmentLoading, setAttachmentLoading] = useState(false);
 
-CREATE INDEX idx_attachments_cid ON attachments(cid_id);
-CREATE INDEX idx_attachments_task ON attachments(cid_task_id);
+// Fetch attachments
+const fetchAttachments = async () => {
+  try {
+    setAttachmentLoading(true);
+    const res = await fetchAttachmentsByTask(task.cid_task_id);
+    setAttachments(res.data.data);
+  } catch (error) {
+    showNotification("Failed to load attachments", "error");
+  } finally {
+    setAttachmentLoading(false);
+  }
+};
 
---------------------------
-npm install multer
--------------------------
-// fileUpload.js
-import multer from 'multer';
-import path from 'path';
+useEffect(() => {
+  if (open) {
+    fetchAttachments();
+  }
+}, [open, task.cid_task_id]);
 
-// set up local storage configuration
-const storage = multer.diskStorage({
-  destination: (req, file, cb) => {
-    cb(null, './uploads'); // files will be stored in uploads folder
-  },
-  filename: (req, file, cb) => {
-    cb(null, `${Date.now()}_${file.originalname}`);
-  },
-});
+---------------------------------
+// Handle file upload
+const handleFileUpload = async (e) => {
+  const file = e.target.files[0];
+  if (!file) return;
 
-// configure file filter and size
-const upload = multer({
-  storage,
-  limits: { fileSize: 20 * 1024 * 1024 }, // limit 20MB
-  fileFilter: (req, file, cb) => {
-    const fileTypes = /jpeg|jpg|png|pdf|doc|docx|xlsx|xls/;
-    const mimeType = fileTypes.test(file.mimetype);
-    const extname = fileTypes.test(path.extname(file.originalname).toLowerCase());
+  try {
+    setAttachmentLoading(true);
+    await uploadTaskAttachment(task.cid_task_id, file);
+    showNotification("File uploaded successfully!", "success");
+    fetchAttachments();
+  } catch (error) {
+    showNotification("Failed to upload file.", "error");
+  } finally {
+    setAttachmentLoading(false);
+  }
+};
 
-    if (mimeType && extname) {
-      return cb(null, true);
-    }
-    cb(new Error('File type not supported.'));
-  },
-});
+// Handle file delete
+const handleDeleteAttachment = async (attachment_id) => {
+  try {
+    setAttachmentLoading(true);
+    await deleteAttachment(attachment_id);
+    showNotification("File deleted successfully.", "success");
+    fetchAttachments();
+  } catch (error) {
+    showNotification("Failed to delete file.", "error");
+  } finally {
+    setAttachmentLoading(false);
+  }
+};
 
-export default upload;
-------------------------------------
+------------------------------
+<Divider sx={{ my: 2 }} />
+<Box sx={{ my: 2 }}>
+  <Typography variant="subtitle1" sx={{ fontWeight: 'bold', mb: 1 }}>
+    Attachments
+  </Typography>
+
+  {/* Attachment upload */}
+  <Button
+    variant="contained"
+    component="label"
+    startIcon={<AttachFileIcon />}
+    sx={{ mb: 2 }}
+    disabled={attachmentLoading}
+  >
+    {attachmentLoading ? "Uploading..." : "Upload File"}
+    <input type="file" hidden onChange={handleFileUpload} />
+  </Button>
+
+  {/* Attachment list */}
+  {attachmentLoading ? (
+    <CircularProgress size={24} />
+  ) : attachments.length === 0 ? (
+    <Typography variant="body2">No attachments yet.</Typography>
+  ) : (
+    attachments.map((att) => (
+      <Box key={att.attachment_id} sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
+        <Typography variant="body2" sx={{ flexGrow: 1 }}>
+          <a
+            href={`${import.meta.env.VITE_API_BASE_URL}/${att.file_path}`}
+            target="_blank"
+            rel="noopener noreferrer"
+          >
+            {att.file_name}
+          </a>
+        </Typography>
+        <IconButton
+          color="error"
+          size="small"
+          onClick={() => handleDeleteAttachment(att.attachment_id)}
+        >
+          <DeleteIcon fontSize="small" />
+        </IconButton>
+      </Box>
+    ))
+  )}
+</Box>
