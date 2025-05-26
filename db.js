@@ -1,36 +1,43 @@
-import { Storage } from '@google-cloud/storage';
-
-const storage = new Storage();
-const bucketName = process.env.GCS_BUCKET; // Set this in your .env
-
-export const uploadFileToGCS = async (fileBuffer, originalName, mimetype) => {
-  const fileName = `${Date.now()}_${originalName}`;
-  const bucket = storage.bucket(bucketName);
-  const file = bucket.file(fileName);
-
-  await file.save(fileBuffer, {
-    metadata: { contentType: mimetype },
-    resumable: false,
-  });
-
-  // Make file public (optional)
-  // await file.makePublic();
-
-  // Get public URL (if public), else use signed URL for private access
-  const [url] = await file.getSignedUrl({
-    action: 'read',
-    expires: Date.now() + 1000 * 60 * 60 * 24 * 7, // 1 week
-  });
-
-  return {
-    file_name: originalName,
-    file_path: fileName,    // Store GCS path, not local path
-    public_url: url,        // Save/download link to DB if you want
-  };
-};
-
-export const deleteFileFromGCS = async (filePath) => {
-  const bucket = storage.bucket(bucketName);
-  const file = bucket.file(filePath);
-  await file.delete();
-};
+{attachments.map((file) => (
+  <Box
+    key={file.attachment_id}
+    sx={{
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      mb: 1,
+      gap: 2,
+    }}
+  >
+    <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+      {/* If it's an image, show preview; else show a link */}
+      {file.file_type && file.file_type.startsWith('image/') ? (
+        <a href={file.public_url} target="_blank" rel="noopener noreferrer">
+          <img
+            src={file.public_url}
+            alt={file.file_name}
+            style={{
+              width: 48,
+              height: 48,
+              objectFit: 'cover',
+              borderRadius: 4,
+              border: '1px solid #eee',
+              marginRight: 8,
+            }}
+          />
+        </a>
+      ) : (
+        <a href={file.public_url} target="_blank" rel="noopener noreferrer">
+          {file.file_name}
+        </a>
+      )}
+      {/* File name (for images, show below/next to preview) */}
+      <Typography variant="body2" sx={{ maxWidth: 150, overflow: 'hidden', textOverflow: 'ellipsis' }}>
+        {file.file_name}
+      </Typography>
+    </Box>
+    <IconButton color="error" onClick={() => handleDelete(file.attachment_id)}>
+      <DeleteIcon />
+    </IconButton>
+  </Box>
+))}
