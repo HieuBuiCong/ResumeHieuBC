@@ -1,233 +1,24 @@
--- 🚀 Create the "role" table ✅
-CREATE TABLE role (
-    role_id SERIAL PRIMARY KEY,
-    role_name VARCHAR(50) NOT NULL UNIQUE
-);
-
--- 🚀 Create the "department" table ✅
-CREATE TABLE department (
-    department_id SERIAL PRIMARY KEY,
-    department_name VARCHAR(100) NOT NULL UNIQUE
-);
-
--- Supplier TableTable
-CREATE TABLE supplier (
-  supplier_id SERIAL PRIMARY KEY,
-  supplier_code TEXT NOT NULL UNIQUE,
-  supplier_name TEXT NOT NULL UNIQUE
-);
-
--- 🚀 Create the "users" table ✅
-CREATE TABLE users (
-    user_id SERIAL PRIMARY KEY,
-    username VARCHAR(50) NOT NULL UNIQUE,
-    password TEXT NOT NULL,
-    role_id INT NOT NULL,
-    department_id INT NOT NULL,
-    profile_picture VARCHAR(255),
-    email VARCHAR(100) NOT NULL UNIQUE,
-    leader_email VARCHAR(100) NOT NULL,
-    FOREIGN KEY (role_id) REFERENCES role(role_id) ON DELETE CASCADE,
-    FOREIGN KEY (department_id) REFERENCES department(department_id) ON DELETE SET NULL
-);
-
--- 🚀 Create the "product" table ✅
-CREATE TABLE product (
-    product_id SERIAL PRIMARY KEY,
-    model VARCHAR(100) NOT NULL,
-    part_number VARCHAR(100) NOT NULL UNIQUE,
-    part_name VARCHAR(100) NOT NULL,
-    owner VARCHAR(255) 
-);
-
--- 🚀 Create task_category table ✅
-CREATE TABLE task_category (
-    task_category_id SERIAL PRIMARY KEY,
-    task_name VARCHAR(255) NOT NULL UNIQUE
-);
-
--- Add the assignee_id column
-ALTER TABLE "task_category"
-ADD COLUMN assignee_id INTEGER;
-
--- ADD the foreign key constraint to link to users table
-ALTER TABLE "task_category"
-ADD CONSTRAINT fk_taskcategory_assignee
-FOREIGN KEY (assignee_id) REFERENCES users(user_id) ON DELETE SET NULL;
-
--- 🚀 Create task_category_question table ✅
-CREATE TABLE task_category_question (
-    task_category_question_id SERIAL PRIMARY KEY,
-    question_name TEXT NOT NULL UNIQUE,
-    task_category_id INT NOT NULL,
-    FOREIGN KEY (task_category_id) REFERENCES task_category(task_category_id) ON DELETE CASCADE
-);
-----------------------------------------------------------------------------------------------------------------------------------------------
--- 🚀 Drop table if it already exists (optional) ✅
-DROP TABLE IF EXISTS cid CASCADE;
-
--- 🚀 Create the "cid" table with correct overdue logic ✅
-CREATE TABLE cid (
-    cid_id SERIAL PRIMARY KEY,
-    product_id INT NOT NULL,
-    prev_rev VARCHAR(50),
-    next_rev VARCHAR(50) NOT NULL,
-    change_notice VARCHAR(255),
-    supplier_id INT,
-    rework_or_not BOOLEAN NOT NULL,
-    OTS_or_not BOOLEAN NOT NULL,
-    important_or_not BOOLEAN NOT NULL,
-    created_date TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    closing_date TIMESTAMP DEFAULT NULL,  -- ✅ Default is NULL (Only updates on "complete" or "cancel")
-    note TEXT,
-    status VARCHAR(20) NOT NULL DEFAULT 'in-progress' CHECK (status IN ('in-progress', 'complete', 'cancel', 'pending', 'overdue', 'submitted')),
-    deadline TIMESTAMP DEFAULT NULL,  -- ✅ Default is NULL (User sets it when needed)
-    FOREIGN KEY (product_id) REFERENCES product(product_id) ON DELETE CASCADE,
-    FOREIGN KEY (supplier_id) REFERENCES supplier(supplier_id) ON DELETE SET NULL,
-    UNIQUE (product_id, next_rev, supplier_id)
-);
-
--- 🚀 Function to update `closing_date` when status is "complete" or "cancel" ✅
 CREATE OR REPLACE FUNCTION update_closing_date()
 RETURNS TRIGGER AS $$
 BEGIN
-    IF NEW.status = 'complete' OR NEW.status = 'cancel' THEN
-        NEW.closing_date = CURRENT_TIMESTAMP;
-    ELSE
-        NEW.closing_date = NULL;  -- ✅ Ensure it resets to NULL if status is changed back
+    -- If inserting a new row with status 'complete' or 'cancel'
+    IF TG_OP = 'INSERT' AND (NEW.status = 'complete' OR NEW.status = 'cancel') THEN
+        NEW.closing_date := CURRENT_TIMESTAMP;
+
+    -- If updating status to 'complete' or 'cancel'
+    ELSIF TG_OP = 'UPDATE' AND
+          (NEW.status = 'complete' OR NEW.status = 'cancel') AND
+          (OLD.status IS DISTINCT FROM NEW.status) THEN
+        NEW.closing_date := CURRENT_TIMESTAMP;
     END IF;
+
     RETURN NEW;
 END;
 $$ LANGUAGE plpgsql;
 
--- 🚀 Attach the trigger to update closing_date when needed ✅
+DROP TRIGGER IF EXISTS cid_status_update ON cid;
+
 CREATE TRIGGER cid_status_update
 BEFORE INSERT OR UPDATE ON cid
 FOR EACH ROW
 EXECUTE FUNCTION update_closing_date();
-
-
--- 🚀 Function to check and update overdue status dynamically ✅
-CREATE OR REPLACE FUNCTION check_overdue_status()
-RETURNS TRIGGER AS $$
-BEGIN
-    -- ✅ If the deadline has passed and status is "in-progress" (ONLY IN-PROGRESS!), set status to "overdue"
-    IF NEW.deadline IS NOT NULL AND NEW.deadline < NOW() AND NEW.status = 'in-progress' THEN
-        NEW.status = 'overdue';
-    END IF;
-
-    -- ✅ If the deadline is changed to a future date and the status is "overdue", reset to "in-progress"
-    IF NEW.deadline IS NOT NULL AND NEW.deadline > NOW() AND OLD.status = 'overdue' THEN
-        NEW.status = 'in-progress';
-    END IF;
-
-    RETURN NEW;
-END;
-$$ LANGUAGE plpgsql;
-
--- 🚀 Attach the trigger to check for overdue status dynamically ✅
-CREATE TRIGGER cid_overdue_check
-BEFORE UPDATE OR INSERT ON cid
-FOR EACH ROW
-EXECUTE FUNCTION check_overdue_status();
--------------------------------------------------------------------------------------------------------------------------------------------
-
--- 🚀 Create the "cid_task" table
-CREATE TABLE cid_task (
-    cid_task_id SERIAL PRIMARY KEY,
-    task_category_id INT NOT NULL,
-    cid_id INT NOT NULL,
-    status VARCHAR(20) NOT NULL DEFAULT 'in-progress' CHECK (status IN ('in-progress', 'complete', 'cancel', 'pending', 'overdue', 'submitted')),
-    assignee_id INT NOT NULL,
-    deadline TIMESTAMP WITH TIME ZONE NOT NULL,
-    created_date TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP, 
-    task_approver_id INT,
-    submitted_date TIMESTAMP, 
-    approval_date TIMESTAMP DEFAULT NULL,
-    send_email_to_leader BOOLEAN NOT NULL DEFAULT FALSE,
-    dependency_cid_id INT,
-    dependency_date INTEGER,
-    FOREIGN KEY (task_category_id) REFERENCES task_category(task_category_id) ON DELETE CASCADE,
-    FOREIGN KEY (cid_id) REFERENCES cid(cid_id) ON DELETE CASCADE,
-    FOREIGN KEY (assignee_id) REFERENCES users(user_id) ON DELETE SET NULL,
-    FOREIGN KEY (task_approver_id) REFERENCES users(user_id) ON DELETE SET NULL,
-    FOREIGN KEY (dependency_cid_id) REFERENCES cid_task(cid_task_id) ON DELETE SET NULL,
-    UNIQUE(task_category_id, cid_id)
-);
---------------------------------------------------------------------------------------------------------------------------------
-CREATE TABLE IF NOT EXISTS postpone_reason (
-    postpone_reason_id SERIAL PRIMARY KEY,
-    cid_task_id INT NOT NULL REFERENCES cid_task(cid_task_id) ON DELETE CASCADE,
-    user_id INT NOT NULL REFERENCES users(user_id),
-    reason TEXT NOT NULL,
-    proposed_date TIMESTAMP WITH TIME ZONE NOT NULL,
-    status VARCHAR(20) NOT NULL DEFAULT 'pending',
-    approver_id INT REFERENCES users(user_id),
-    approver_reason TEXT,
-    created_at TIMESTAMP DEFAULT NOW(),
-    reviewed_at TIMESTAMP
-);
-
------
-ALTER TABLE postpone_reason
-ADD COLUMN resolved_date TIMESTAMP WITH TIME ZONE;
---------------------------
--- 🚀 Create the "task_category_question_answer" table 
--- task_category_question_answer
-CREATE TABLE IF NOT EXISTS task_category_question_answer (
-  task_category_question_answer_id SERIAL PRIMARY KEY,
-  task_category_question_id        INT NOT NULL REFERENCES task_category_question(task_category_question_id),
-  cid_task_id                      INT NOT NULL REFERENCES cid_task(cid_task_id) ON DELETE CASCADE,
-  answer                           TEXT
-);
-
--------------------------
-CREATE TABLE task_approval_history (
-    approval_id SERIAL PRIMARY KEY,
-    cid_task_id INT NOT NULL,
-    approver_id INT NOT NULL,
-    decision VARCHAR(20) NOT NULL CHECK (decision IN ('approve', 'reject')),
-    approver_reason TEXT NOT NULL,
-    reviewed_at TIMESTAMP DEFAULT NOW(),
-    CONSTRAINT fk_cid_task
-        FOREIGN KEY (cid_task_id) 
-        REFERENCES cid_task(cid_task_id)
-        ON DELETE CASCADE,
-    CONSTRAINT fk_approver
-        FOREIGN KEY (approver_id) 
-        REFERENCES users(user_id)
-);
-
-------------------------------
-CREATE TABLE reference_email_list (
-    email VARCHAR(255) NOT NULL
-);
-
-CREATE TABLE attachments (
-  attachment_id SERIAL PRIMARY KEY,
-  file_name TEXT NOT NULL,
-  file_path TEXT NOT NULL, -- local storage path
-  file_type VARCHAR(100),
-  file_size BIGINT,
-  cid_id INT REFERENCES cid(cid_id) ON DELETE CASCADE,
-  cid_task_id INT REFERENCES cid_task(cid_task_id) ON DELETE CASCADE,
-  uploaded_by INT REFERENCES users(user_id) ON DELETE SET NULL,
-  uploaded_at TIMESTAMP DEFAULT NOW(),
-  UNIQUE (file_path)
-);
-
--- Show public URL when run on GCS
-ALTER TABLE attachments
-ADD COLUMN public_url TEXT;
-
--- Create table show relation ship between product and supplier
-CREATE TABLE product_supplier_relation (
-    product_id INT NOT NULL REFERENCES products(product_id) ON DELETE CASCADE,
-    supplier_id INT NOT NULL REFERENCES suppliers(supplier_id) ON DELETE CASCADE,
-    PRIMARY KEY (product_id, supplier_id)
-);
-
-
-
-CREATE INDEX idx_attachments_cid ON attachments(cid_id);
-CREATE INDEX idx_attachments_task ON attachments(cid_task_id);
