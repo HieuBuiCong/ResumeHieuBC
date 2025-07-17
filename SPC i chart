@@ -1,0 +1,169 @@
+import matplotlib
+matplotlib.use('Agg')  # Use non-interactive backend
+import matplotlib.pyplot as plt
+import pandas as pd
+import numpy as np
+
+# --- CREATE DUMMY DATA ---
+np.random.seed(42)  # For reproducible results
+dates = pd.date_range('2024-01-01', periods=50, freq='D')
+serial_numbers = [f'SN{i:03d}' for i in range(1, 51)]
+values = np.random.normal(450, 8, 50)  # Mean=450, std=8
+# Add Rule 2 violations (2 of 3 beyond ±2σ same side)
+values[10] = 466  # Above mean + 2σ (450 + 16 = 466)
+values[11] = 467  # Another above 2σ
+values[12] = 455  # Normal value
+values[20] = 434  # Below mean - 2σ (450 - 16 = 434)
+values[21] = 433  # Another below 2σ
+values[22] = 445  # Normal valueUMMY DATA ---
+np.random.seed(42)  # For reproducible results
+dates = pd.date_range('2024-01-01', periods=50, freq='D')
+serial_numbers = [f'SN{i:03d}' for i in range(1, 51)]
+values = np.random.normal(450, 8, 50)  # Mean=450, std=8
+# Add Rule 2 violations (2 of 3 beyond ±2σ same side)
+values[10] = 466  # Above mean + 2σ (450 + 16 = 466)
+values[11] = 467  # Another above 2σ
+values[12] = 455  # Normal value
+values[20] = 434  # Below mean - 2σ (450 - 16 = 434)
+values[21] = 433  # Another below 2σ
+values[22] = 445  # Normal valuetlib
+matplotlib.use('Agg')  # Use non-interactive backend
+import matplotlib.pyplot as plt
+import pandas as pd
+import numpy as np
+
+# --- CREATE DUMMY DATA ---
+np.random.seed(42)  # For reproducible results
+dates = pd.date_range('2024-01-01', periods=50, freq='D')
+serial_numbers = [f'SN{i:03d}' for i in range(1, 51)]
+# Create well-controlled data with no rule violations
+values = np.random.normal(450, 5, 50)  # Mean=450, std=5 (very tight control)
+# Keep all values well within control limits (no extreme values)
+
+dataset = pd.DataFrame({
+    'MeasureTime': dates,
+    'SerialNumber': serial_numbers,
+    'Value': values
+})
+
+# --- STEP 1: Prepare Data ---
+dataset = dataset.dropna()
+dataset = dataset.sort_values('MeasureTime')
+dataset = dataset.tail(30)
+dataset['MeasureTime'] = pd.to_datetime(dataset['MeasureTime'])
+
+x_labels = dataset['SerialNumber']
+y_values = dataset['Value']
+
+# --- STEP 2: Basic Stats ---
+mean = y_values.mean()
+std = y_values.std()
+
+# Spec limits (replace if dynamic)
+USL = 540
+LSL = 370
+
+Cp = (USL - LSL) / (6 * std)
+Cpk = min((USL - mean) / (3 * std), (mean - LSL) / (3 * std))
+
+# --- STEP 3: Initialize OOC masks ---
+rule1 = (y_values > mean + 3 * std) | (y_values < mean - 3 * std)
+rule2 = np.zeros(len(y_values), dtype=bool)
+rule3 = np.zeros(len(y_values), dtype=bool)
+rule4 = np.zeros(len(y_values), dtype=bool)
+
+# --- STEP 4: Rule 2 — 2 of 3 beyond ±2σ same side ---
+for i in range(2, len(y_values)):
+    group = y_values.iloc[i-2:i+1]
+    above = (group > mean + 2*std).sum()
+    below = (group < mean - 2*std).sum()
+    if above >= 2 or below >= 2:
+        rule2[i-2:i+1] = True
+
+# --- STEP 5: Rule 3 — 4 of 5 beyond ±1σ same side ---
+for i in range(4, len(y_values)):
+    group = y_values.iloc[i-4:i+1]
+    above = (group > mean + std).sum()
+    below = (group < mean - std).sum()
+    if above >= 4 or below >= 4:
+        rule3[i-4:i+1] = True
+
+# --- STEP 6: Rule 4 — 8 consecutive points on one side of mean ---
+for i in range(7, len(y_values)):
+    group = y_values.iloc[i-7:i+1]
+    if (group > mean).all() or (group < mean).all():
+        rule4[i-7:i+1] = True
+
+# --- STEP 7: Plotting ---
+plt.figure(figsize=(12, 6))
+
+# Set chart background color based on out-of-control status
+total_violations = rule1.sum() + rule2.sum() + rule3.sum() + rule4.sum()
+if rule1.sum() > 0:
+    chart_bg_color = 'mistyrose'  # Light red for Rule 1 (highest priority)
+    text_bg_color = 'lightcoral'
+elif rule2.sum() > 0:
+    chart_bg_color = 'peachpuff'  # Light orange for Rule 2
+    text_bg_color = 'orange'
+elif rule3.sum() > 0:
+    chart_bg_color = 'lavender'  # Light purple for Rule 3
+    text_bg_color = 'plum'
+elif rule4.sum() > 0:
+    chart_bg_color = 'lightcyan'  # Light blue for Rule 4
+    text_bg_color = 'lightblue'
+else:
+    chart_bg_color = 'lightgreen'  # Light green for in-control
+    text_bg_color = 'lightgreen'
+
+plt.gca().set_facecolor(chart_bg_color)
+
+plt.plot(x_labels, y_values, marker='o', linestyle='-', color='black', label='Value')
+
+# Highlight OOC points (plot in reverse order so Rule 1 appears on top)
+plt.scatter(x_labels[rule4], y_values[rule4], color='blue', s=80, label='Rule 4 (8 same side)')
+plt.scatter(x_labels[rule3], y_values[rule3], color='purple', s=80, label='Rule 3 (4 of 5 >±1σ)')
+plt.scatter(x_labels[rule2], y_values[rule2], color='orange', s=80, label='Rule 2 (2 of 3 >±2σ)')
+plt.scatter(x_labels[rule1], y_values[rule1], color='red', s=80, label='Rule 1 (>±3σ)')
+
+# Control & spec lines
+plt.axhline(mean, color='blue', linestyle='--', label='Mean')
+for i, color in zip([1, 2, 3], ['green', 'orange', 'red']):
+    plt.axhline(mean + i * std, color=color, linestyle='--', linewidth=1, label=f'+{i}σ')
+    plt.axhline(mean - i * std, color=color, linestyle='--', linewidth=1, label=f'-{i}σ')
+
+plt.axhline(USL, color='red', linestyle='-', linewidth=1.2, label='USL')
+plt.axhline(LSL, color='blue', linestyle='-', linewidth=1.2, label='LSL')
+
+# Cp & Cpk box with color based on capability values
+min_capability = min(Cp, Cpk)
+if min_capability >= 1.33:
+    cpk_bg_color = 'lightgreen'  # Good capability
+elif min_capability >= 1.0:
+    cpk_bg_color = 'yellow'      # Marginal capability
+else:
+    cpk_bg_color = 'red'         # Poor capability
+
+plt.text(0, min(y_values) - 20,
+         f"Cp = {Cp:.2f}\nCpk = {Cpk:.2f}",
+         fontsize=17, bbox=dict(facecolor=cpk_bg_color, edgecolor='gray', boxstyle='round,pad=0.5'))
+
+# Final layout
+plt.title("I-Chart with Out-of-Control Rules")
+# plt.xlabel("Serial Number (Sorted by MeasureTime)")
+# plt.ylabel("Value")
+# plt.xticks(rotation=45)
+plt.xticks([])  # Remove x-axis labels
+plt.yticks([])  # Remove y-axis labels
+plt.grid(True)
+# plt.legend(loc='upper left', fontsize='small', bbox_to_anchor=(1.05, 1))
+plt.tight_layout()
+
+# Save plot as image file
+plt.savefig('spc_chart.png', dpi=300, bbox_inches='tight')
+print("SPC chart saved as 'spc_chart.png'")
+print(f"Cp = {Cp:.3f}")
+print(f"Cpk = {Cpk:.3f}")
+print(f"Number of Rule 1 violations: {rule1.sum()}")
+print(f"Number of Rule 2 violations: {rule2.sum()}")
+print(f"Number of Rule 3 violations: {rule3.sum()}")
+print(f"Number of Rule 4 violations: {rule4.sum()}")
