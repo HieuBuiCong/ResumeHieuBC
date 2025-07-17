@@ -2,116 +2,91 @@ import matplotlib.pyplot as plt
 import pandas as pd
 import numpy as np
 
-# --- STEP 1: Prepare Data ---
-dataset = dataset.dropna()
-dataset = dataset.sort_values('MeasureTime')
-dataset = dataset.tail(30)
+# STEP 1: Prepare Data
+dataset = dataset.dropna().sort_values('MeasureTime').tail(30)
 dataset['MeasureTime'] = pd.to_datetime(dataset['MeasureTime'])
 
 x_labels = dataset['SerialNumber']
 y_values = dataset['Value']
 
-# --- STEP 2: Basic Stats ---
+# STEP 2: Basic Stats
 mean = y_values.mean()
 std = y_values.std()
-
-# Static Spec Limits (can be replaced with dataset['USL'].iloc[0] etc.)
 USL = 31
 LSL = 24
 
 Cp = (USL - LSL) / (6 * std)
-Cpk = min((USL - mean) / (3 * std), (mean - LSL) / (3 * std))
+Cpk = min((USL - mean)/(3*std), (mean - LSL)/(3*std))
 
-# --- STEP 3: Out-of-Control Rules ---
-rule1 = (y_values > mean + 3 * std) | (y_values < mean - 3 * std)
-rule2 = np.zeros(len(y_values), dtype=bool)
-rule3 = np.zeros(len(y_values), dtype=bool)
-rule4 = np.zeros(len(y_values), dtype=bool)
+# STEP 3: Out-of-Control Rules
+rule1 = (y_values > mean + 3*std) | (y_values < mean - 3*std)
+rule2 = np.zeros(len(y_values), bool)
+rule3 = np.zeros(len(y_values), bool)
+rule4 = np.zeros(len(y_values), bool)
 
-# Rule 2: 2 of 3 beyond ±2σ
+# Rule 2
 for i in range(2, len(y_values)):
     group = y_values.iloc[i-2:i+1]
-    if (group > mean + 2 * std).sum() >= 2 or (group < mean - 2 * std).sum() >= 2:
+    if ((group > mean + 2*std).sum() >= 2 or (group < mean - 2*std).sum() >= 2):
         rule2[i-2:i+1] = True
 
-# Rule 3: 4 of 5 beyond ±1σ
+# Rule 3
 for i in range(4, len(y_values)):
     group = y_values.iloc[i-4:i+1]
-    if (group > mean + std).sum() >= 4 or (group < mean - std).sum() >= 4:
+    if ((group > mean + std).sum() >= 4 or (group < mean - std).sum() >= 4):
         rule3[i-4:i+1] = True
 
-# Rule 4: 8 consecutive points on one side of mean
+# Rule 4
 for i in range(7, len(y_values)):
     group = y_values.iloc[i-7:i+1]
     if (group > mean).all() or (group < mean).all():
         rule4[i-7:i+1] = True
 
-# --- STEP 4: Start Plot ---
+# STEP 4: Dynamic Plot Scaling
+actual_range = USL - LSL
+padding = max(actual_range * 0.5, 5)  # proportional padding (at least 5 units)
 plt.figure(figsize=(12, 6))
 
-# Dynamic Background Color by Severity
-if rule1.any():
-    chart_bg_color = 'mistyrose'
-    cpk_bg_color = 'lightcoral'
-elif rule2.any():
-    chart_bg_color = 'peachpuff'
-    cpk_bg_color = 'orange'
-elif rule3.any():
-    chart_bg_color = 'lavender'
-    cpk_bg_color = 'plum'
-elif rule4.any():
-    chart_bg_color = 'lightcyan'
-    cpk_bg_color = 'lightblue'
-else:
-    chart_bg_color = 'lightgreen'
-    cpk_bg_color = 'lightgreen'
+# Background based on violation severity
+if rule1.any(): chart_bg_color, cpk_bg_color = 'mistyrose', 'lightcoral'
+elif rule2.any(): chart_bg_color, cpk_bg_color = 'peachpuff', 'orange'
+elif rule3.any(): chart_bg_color, cpk_bg_color = 'lavender', 'plum'
+elif rule4.any(): chart_bg_color, cpk_bg_color = 'lightcyan', 'lightblue'
+else: chart_bg_color, cpk_bg_color = 'lightgreen', 'lightgreen'
 
 plt.gca().set_facecolor(chart_bg_color)
 
-# Main Line Chart
-plt.plot(x_labels, y_values, marker='o', linestyle='-', color='black', label='Value')
+# Plot values
+plt.plot(x_labels, y_values, marker='o', linestyle='-', color='black')
 
-# Highlight Rule Violations (draw from lowest priority to highest)
-plt.scatter(x_labels[rule4], y_values[rule4], color='blue', s=80, label='Rule 4 (8 same side)')
-plt.scatter(x_labels[rule3], y_values[rule3], color='purple', s=80, label='Rule 3 (4 of 5 >±1σ)')
-plt.scatter(x_labels[rule2], y_values[rule2], color='orange', s=80, label='Rule 2 (2 of 3 >±2σ)')
-plt.scatter(x_labels[rule1], y_values[rule1], color='red', s=80, label='Rule 1 (>±3σ)')
+# Highlight OOC
+plt.scatter(x_labels[rule4], y_values[rule4], color='blue', s=80)
+plt.scatter(x_labels[rule3], y_values[rule3], color='purple', s=80)
+plt.scatter(x_labels[rule2], y_values[rule2], color='orange', s=80)
+plt.scatter(x_labels[rule1], y_values[rule1], color='red', s=80)
 
-# Mean & Control Limits
-plt.axhline(mean, color='blue', linestyle='--', label='Mean')
+# Mean & Sigma lines
+plt.axhline(mean, color='blue', linestyle='--')
 for i, color in zip([1, 2, 3], ['green', 'orange', 'red']):
-    plt.axhline(mean + i * std, color=color, linestyle='--', linewidth=1, label=f'+{i}σ')
-    plt.axhline(mean - i * std, color=color, linestyle='--', linewidth=1, label=f'-{i}σ')
+    plt.axhline(mean + i*std, color=color, linestyle='--', linewidth=1)
+    plt.axhline(mean - i*std, color=color, linestyle='--', linewidth=1)
 
-# USL & LSL Lines
-plt.axhline(USL, color='red', linestyle='-', linewidth=1.2, label='USL')
-plt.axhline(LSL, color='blue', linestyle='-', linewidth=1.2, label='LSL')
+# USL & LSL lines
+plt.axhline(USL, color='red', linestyle='-', linewidth=1.2)
+plt.axhline(LSL, color='blue', linestyle='-', linewidth=1.2)
 
-# --- STEP 5: Proportional Scaling (based on LSL/USL range) ---
-ref_range = 100  # Change this value to adjust global vertical scale
-data_center = (USL + LSL) / 2
-plt.ylim(data_center - ref_range / 2, data_center + ref_range / 2)
+# Set proportional Y-limits based on actual data range
+plt.ylim(LSL - padding, USL + padding)
 plt.xlim(-0.5, len(x_labels) - 0.5)
 
-# --- STEP 6: Cp & Cpk Box ---
-cpk_level = min(Cp, Cpk)
-if cpk_level >= 1.33:
-    cpk_box_color = 'lightgreen'
-elif cpk_level >= 1.0:
-    cpk_box_color = 'yellow'
-else:
-    cpk_box_color = 'red'
+# Cp/Cpk Box
+plt.text(0, LSL - padding/2, f"Cp = {Cp:.2f}\nCpk = {Cpk:.2f}",
+         fontsize=14, bbox=dict(facecolor=cpk_bg_color, edgecolor='gray', boxstyle='round'))
 
-# Draw text box
-plt.text(0, data_center - ref_range/2 + 3,
-         f"Cp = {Cp:.2f}\nCpk = {Cpk:.2f}",
-         fontsize=14,
-         bbox=dict(facecolor=cpk_box_color, edgecolor='gray', boxstyle='round,pad=0.5'))
-
-# --- STEP 7: Final Layout ---
-plt.title("I-Chart with Out-of-Control Rules (Proportional Scaling)")
-plt.xticks([])  # Hide x-axis labels
-plt.yticks([])  # Hide y-axis labels
+# Clean visual style for Power BI
+plt.xticks([])
+plt.yticks([])
+plt.title("I-Chart with Out-of-Control Rules")
 plt.grid(True)
 plt.tight_layout(pad=2.0)
 plt.show()
