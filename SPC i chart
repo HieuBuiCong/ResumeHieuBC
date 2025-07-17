@@ -1,11 +1,9 @@
-import matplotlib
-matplotlib.use('Agg')  # Use non-interactive backend for Power BI
-
 import matplotlib.pyplot as plt
 import pandas as pd
 import numpy as np
 
-# --- STEP 1: Prepare Dataset (already imported by Power BI) ---
+
+# --- STEP 1: Prepare Data ---
 dataset = dataset.dropna()
 dataset = dataset.sort_values('MeasureTime')
 dataset = dataset.tail(30)
@@ -18,21 +16,20 @@ y_values = dataset['Value']
 mean = y_values.mean()
 std = y_values.std()
 
-# Replace with your actual spec limits or use column values if dynamic
+# Spec limits (replace if dynamic)
 USL = 31
 LSL = 24
 
-# Capability indices
 Cp = (USL - LSL) / (6 * std)
 Cpk = min((USL - mean) / (3 * std), (mean - LSL) / (3 * std))
 
-# --- STEP 3: Out-of-Control Rules ---
+# --- STEP 3: Initialize OOC masks ---
 rule1 = (y_values > mean + 3 * std) | (y_values < mean - 3 * std)
 rule2 = np.zeros(len(y_values), dtype=bool)
 rule3 = np.zeros(len(y_values), dtype=bool)
 rule4 = np.zeros(len(y_values), dtype=bool)
 
-# Rule 2: 2 of 3 beyond ±2σ on the same side
+# --- STEP 4: Rule 2 — 2 of 3 beyond ±2σ same side ---
 for i in range(2, len(y_values)):
     group = y_values.iloc[i-2:i+1]
     above = (group > mean + 2*std).sum()
@@ -40,7 +37,7 @@ for i in range(2, len(y_values)):
     if above >= 2 or below >= 2:
         rule2[i-2:i+1] = True
 
-# Rule 3: 4 of 5 beyond ±1σ same side
+# --- STEP 5: Rule 3 — 4 of 5 beyond ±1σ same side ---
 for i in range(4, len(y_values)):
     group = y_values.iloc[i-4:i+1]
     above = (group > mean + std).sum()
@@ -48,73 +45,91 @@ for i in range(4, len(y_values)):
     if above >= 4 or below >= 4:
         rule3[i-4:i+1] = True
 
-# Rule 4: 8 consecutive points on one side of mean
+# --- STEP 6: Rule 4 — 8 consecutive points on one side of mean ---
 for i in range(7, len(y_values)):
     group = y_values.iloc[i-7:i+1]
     if (group > mean).all() or (group < mean).all():
         rule4[i-7:i+1] = True
 
-# --- STEP 4: Setup Plot with Proportional Scaling ---
-fig = plt.figure(figsize=(12, 6))  # 2:1 aspect ratio for stable layout
-ax = plt.gca()
+# --- STEP 7: Plotting ---
+plt.figure(figsize=(12, 6))
 
-# Set background color based on most severe violation
-if rule1.any():
-    chart_bg = 'mistyrose'
-    cpk_color = 'lightcoral'
-elif rule2.any():
-    chart_bg = 'peachpuff'
-    cpk_color = 'orange'
-elif rule3.any():
-    chart_bg = 'lavender'
-    cpk_color = 'plum'
-elif rule4.any():
-    chart_bg = 'lightcyan'
-    cpk_color = 'lightblue'
+# Set chart background color based on out-of-control status
+total_violations = rule1.sum() + rule2.sum() + rule3.sum() + rule4.sum()
+if rule1.sum() > 0:
+    chart_bg_color = 'mistyrose'  # Light red for Rule 1 (highest priority)
+    text_bg_color = 'lightcoral'
+elif rule2.sum() > 0:
+    chart_bg_color = 'peachpuff'  # Light orange for Rule 2
+    text_bg_color = 'orange'
+elif rule3.sum() > 0:
+    chart_bg_color = 'lavender'  # Light purple for Rule 3
+    text_bg_color = 'plum'
+elif rule4.sum() > 0:
+    chart_bg_color = 'lightcyan'  # Light blue for Rule 4
+    text_bg_color = 'lightblue'
 else:
-    chart_bg = 'lightgreen'
-    cpk_color = 'lightgreen'
+    chart_bg_color = 'lightgreen'  # Light green for in-control
+    text_bg_color = 'lightgreen'
 
-ax.set_facecolor(chart_bg)
+plt.gca().set_facecolor(chart_bg_color)
 
-# Plot value line
 plt.plot(x_labels, y_values, marker='o', linestyle='-', color='black', label='Value')
 
-# Highlight OOC points
+# Highlight OOC points (plot in reverse order so Rule 1 appears on top)
 plt.scatter(x_labels[rule4], y_values[rule4], color='blue', s=80, label='Rule 4 (8 same side)')
 plt.scatter(x_labels[rule3], y_values[rule3], color='purple', s=80, label='Rule 3 (4 of 5 >±1σ)')
 plt.scatter(x_labels[rule2], y_values[rule2], color='orange', s=80, label='Rule 2 (2 of 3 >±2σ)')
 plt.scatter(x_labels[rule1], y_values[rule1], color='red', s=80, label='Rule 1 (>±3σ)')
 
-# Draw Mean and Control Limits
+# Control & spec lines
 plt.axhline(mean, color='blue', linestyle='--', label='Mean')
 for i, color in zip([1, 2, 3], ['green', 'orange', 'red']):
     plt.axhline(mean + i * std, color=color, linestyle='--', linewidth=1, label=f'+{i}σ')
     plt.axhline(mean - i * std, color=color, linestyle='--', linewidth=1, label=f'-{i}σ')
 
-# Spec limits
 plt.axhline(USL, color='red', linestyle='-', linewidth=1.2, label='USL')
 plt.axhline(LSL, color='blue', linestyle='-', linewidth=1.2, label='LSL')
 
-# --- STEP 5: Fix Chart Height Proportionally ---
-ref_range = 60  # Change this to normalize vertical scale across visuals
-data_center = (USL + LSL) / 2
-plt.ylim(data_center - ref_range / 2, data_center + ref_range / 2)
+# Calculate chart dimensions for consistent scaling
+data_center = (y_values.max() + y_values.min()) / 2
+data_range = y_values.max() - y_values.min()
+fixed_range = max(data_range * 2, 50)  # Minimum range of 50 units
 
-# X-axis limits to prevent auto-cropping
-plt.xlim(-0.5, len(x_labels) - 0.5)
+# Cp & Cpk box with color based on capability values
+min_capability = min(Cp, Cpk)
+if min_capability >= 1.33:
+    cpk_bg_color = 'lightgreen'  # Good capability
+elif min_capability >= 1.0:
+    cpk_bg_color = 'yellow'      # Marginal capability
+else:
+    cpk_bg_color = 'red'         # Poor capability
 
-# Cp/Cpk Display Box (bottom-left)
-plt.text(0, data_center - ref_range/2 + 3,
+# Position Cp/Cpk text relative to the chart area (bottom-left)
+y_bottom = data_center - fixed_range/2
+plt.text(0, y_bottom + fixed_range * 0.1,
          f"Cp = {Cp:.2f}\nCpk = {Cpk:.2f}",
-         fontsize=13,
-         bbox=dict(facecolor=cpk_color, edgecolor='gray', boxstyle='round,pad=0.5'))
+         fontsize=17, bbox=dict(facecolor=cpk_bg_color, edgecolor='gray', boxstyle='round,pad=0.5'))
 
-# --- STEP 6: Final Layout ---
-plt.title("I-Chart with Out-of-Control Rules (Proportional)")
-plt.xticks([])  # Hide x-labels to preserve space
-plt.yticks([])  # Hide y-axis
+# Set fixed aspect ratio for consistent chart dimensions in Power BI
+# This ensures the chart maintains the same physical size while scaling content proportionally
+plt.gca().set_aspect('auto')  # Allow automatic aspect ratio adjustment
+plt.xlim(-0.5, len(x_labels) - 0.5)  # Fixed X-axis range based on data points
+
+# Set Y-axis range with consistent proportions relative to the data
+data_center = (USL + LSL) / 2
+# Use a fixed multiplier to ensure consistent chart proportions
+ref_range = 100  # Minimum range of 50 units
+plt.ylim(data_center - ref_range/2, data_center + ref_range/2)
+
+# Final layout
+plt.title("I-Chart with Out-of-Control Rules")
+# plt.xlabel("Serial Number (Sorted by MeasureTime)")
+# plt.ylabel("Value")
+# plt.xticks(rotation=45)
+plt.xticks([])  # Remove x-axis labels
+plt.yticks([])  # Remove y-axis labels
 plt.grid(True)
-
-# Keep layout consistent
-plt.tight_layout(pad=2.0)
+# plt.legend(loc='upper left', fontsize='small', bbox_to_anchor=(1.05, 1))
+plt.tight_layout()
+plt.show()
